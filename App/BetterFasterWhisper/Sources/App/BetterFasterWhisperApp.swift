@@ -25,8 +25,8 @@ struct BetterFasterWhisperApp: App {
             MenuBarView()
                 .environmentObject(appState)
         } label: {
-            Image(systemName: appState.isRecording ? "waveform.circle.fill" : "waveform.circle")
-                .symbolRenderingMode(.hierarchical)
+            Image("MenuBarIcon")
+                .renderingMode(.template)
         }
         .menuBarExtraStyle(.window)
     }

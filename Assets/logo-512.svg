@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 
+    BetterFasterWhisper Logo - "Spark"
+    Version 512x512
+  -->
+  <rect width="512" height="512" rx="108" fill="#000000"/>
+  
+  <!-- Forme cristalline externe -->
+  <polygon points="256,60 340,170 420,256 340,342 256,452 172,342 92,256 172,170" 
+           fill="white"/>
+  
+  <!-- Découpe interne -->
+  <polygon points="256,140 300,200 340,256 300,312 256,372 212,312 172,256 212,200" 
+           fill="#000000"/>
+</svg>
