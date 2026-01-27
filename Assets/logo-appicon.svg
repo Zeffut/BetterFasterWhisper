@@ -1,0 +1,17 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 
+    BetterFasterWhisper Logo - "Spark"
+    Version pour App Icon macOS - fond étendu pour compenser le padding de macOS
+  -->
+  
+  <!-- Fond noir étendu au-delà des bords -->
+  <rect x="-100" y="-100" width="1224" height="1224" fill="#000000"/>
+  
+  <!-- Forme cristalline externe - légèrement plus grande -->
+  <polygon points="512,100 700,330 870,512 700,694 512,924 324,694 154,512 324,330" 
+           fill="white"/>
+  
+  <!-- Découpe interne -->
+  <polygon points="512,260 610,390 700,512 610,634 512,764 414,634 324,512 414,390" 
+           fill="#000000"/>
+</svg>
