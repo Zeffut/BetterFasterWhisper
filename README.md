@@ -1,20 +1,34 @@
 # BetterFasterWhisper
 
-A free, open-source voice-to-text application for macOS, powered by WhisperKit and optimized for Apple Silicon.
+> **The free, open-source competitor to [SuperWhisper](https://superwhisper.com)**
 
-**BetterFasterWhisper** is a 100% local, privacy-first alternative to [SuperWhisper](https://superwhisper.com). No subscriptions, no API costs, no data ever leaves your device.
+A powerful voice-to-text application for macOS that aims to match and exceed SuperWhisper's functionality - without the $8/month subscription. Powered by WhisperKit and optimized for Apple Silicon.
 
 ![macOS](https://img.shields.io/badge/macOS-13.0+-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9+-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-Optimized-purple)
 
+## Why BetterFasterWhisper?
+
+**SuperWhisper** is a fantastic app, but it costs **$8/month** (or $96/year). That's a lot for something that runs entirely on your own hardware.
+
+**BetterFasterWhisper** gives you the same experience:
+- Same push-to-talk workflow
+- Same local Whisper transcription
+- Same auto-paste functionality
+- **But 100% free, forever.**
+
+No subscriptions. No API costs. No data collection. Just fast, private, local speech-to-text.
+
 ## Features
 
-- **100% Free & Open Source** - No subscriptions, no API costs, no hidden fees
+**Everything SuperWhisper does, but free:**
+
+- **100% Free & Open Source** - No $8/month subscription, no API costs, no hidden fees
 - **Fully Offline** - All processing happens locally on your Mac using CoreML
 - **Apple Silicon Optimized** - Uses WhisperKit with CoreML for blazing fast transcription on M1/M2/M3/M4
-- **Push-to-Talk** - Hold Right Option key to record, release to transcribe
+- **Push-to-Talk** - Hold Right Option key to record, release to transcribe (just like SuperWhisper)
 - **Auto-Paste** - Transcribed text is automatically pasted where your cursor is
 - **Visual Feedback** - Elegant overlay with animated waveform during recording and pulsing dots during transcription
 - **Media Control** - Optionally pause playing media while recording
@@ -256,12 +270,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [OpenAI Whisper](https://github.com/openai/whisper) - The speech recognition model
 - [WhisperKit](https://github.com/argmaxinc/WhisperKit) - Swift native Whisper implementation for Apple Silicon
-- [SuperWhisper](https://superwhisper.com) - Inspiration for the user experience
+- [SuperWhisper](https://superwhisper.com) - The app we're competing with (great UX, but we think speech-to-text should be free)
 
 ## Disclaimer
 
-This project is not affiliated with OpenAI, Argmax, or SuperWhisper. It's an independent open-source alternative built with love for the macOS community.
+This project is not affiliated with OpenAI, Argmax, or SuperWhisper. BetterFasterWhisper is an independent open-source competitor built to provide a free alternative to paid voice-to-text solutions.
 
 ---
 
-**Made with love for the open-source community**
+**Stop paying $8/month for voice-to-text. Use BetterFasterWhisper.**
