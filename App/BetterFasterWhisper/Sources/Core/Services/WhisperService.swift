@@ -91,8 +91,8 @@ final class WhisperService: ObservableObject {
             // WhisperKit handles model downloading automatically
             whisperKit = try await WhisperKit(
                 model: modelVariant,
-                verbose: true,
-                logLevel: .info,
+                verbose: false,  // Disabled for performance
+                logLevel: .error,  // Only log errors
                 prewarm: true,
                 load: true,
                 useBackgroundDownloadSession: false
@@ -130,20 +130,20 @@ final class WhisperService: ObservableObject {
         let startTime = Date()
         
         do {
-            // Configure decoding options
+            // Configure decoding options - optimized for speed
             let options = DecodingOptions(
                 verbose: false,
                 task: .transcribe,
                 language: language,
                 temperature: 0.0,
                 temperatureIncrementOnFallback: 0.2,
-                temperatureFallbackCount: 5,
+                temperatureFallbackCount: 2,  // Reduced from 5 for faster processing
                 sampleLength: 224,
                 topK: 5,
                 usePrefillPrompt: true,
                 usePrefillCache: true,
                 skipSpecialTokens: true,
-                withoutTimestamps: false,
+                withoutTimestamps: true,  // Disabled timestamps for speed
                 wordTimestamps: false,
                 suppressBlank: true,
                 supressTokens: nil,
@@ -151,7 +151,7 @@ final class WhisperService: ObservableObject {
                 logProbThreshold: -1.0,
                 firstTokenLogProbThreshold: nil,
                 noSpeechThreshold: 0.6,
-                concurrentWorkerCount: 0,
+                concurrentWorkerCount: 4,  // Enable parallel processing
                 chunkingStrategy: nil
             )
             
@@ -181,8 +181,7 @@ final class WhisperService: ObservableObject {
             // Detect language from first result
             let detectedLanguage = results.first?.language ?? "unknown"
             
-            logger.info("Transcription completed in \(String(format: "%.2f", processingTime))s")
-            logger.info("Text: \(fullText.prefix(100))...")
+            logger.info("Transcription completed in \(String(format: "%.2f", processingTime))s for \(String(format: "%.2f", audioDuration))s audio")
             
             return TranscriptionResult(
                 text: fullText,
