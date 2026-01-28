@@ -206,6 +206,26 @@ actor AudioRecorder {
         return min(1.0, rms * 5)
     }
     
+    /// Returns the current sample count without stopping recording.
+    func getCurrentSampleCount() -> Int {
+        return audioBuffer.count
+    }
+    
+    /// Returns a copy of samples from a given index without stopping recording.
+    /// Used for progressive transcription during long recordings.
+    /// - Parameter fromIndex: Starting sample index (0-based)
+    /// - Returns: Array of samples from the given index to current position
+    func getSamplesFrom(index: Int) -> [Float] {
+        guard index < audioBuffer.count else { return [] }
+        return Array(audioBuffer[index...])
+    }
+    
+    /// Returns all accumulated samples without stopping recording.
+    /// Used for progressive transcription during long recordings.
+    func getAllSamples() -> [Float] {
+        return audioBuffer
+    }
+    
     // MARK: - Private Methods
     
     private func checkAuthorization() async -> Bool {

@@ -126,8 +126,7 @@ tmtags
 *.mlmodel
 *.mlmodelc/
 *.mlpackage/
-Models/
-models/
+# Note: Don't ignore Models/ directory - it contains Swift code, not ML models
 
 # =============================================================================
 # App-specific
