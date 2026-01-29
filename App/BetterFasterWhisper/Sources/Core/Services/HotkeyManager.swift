@@ -173,7 +173,7 @@ class HotkeyManager: ObservableObject {
     /// Start listening for the trigger key using CGEvent tap.
     func startListening() {
         guard !isListening else { return }
-        
+
         // Check permission first
         guard AXIsProcessTrusted() else {
             logger.warning("Cannot start listening - no accessibility permission")
@@ -182,16 +182,16 @@ class HotkeyManager: ObservableObject {
             startPermissionPolling()
             return
         }
-        
+
         // Stop polling if we were polling
         stopPermissionPolling()
-        
+
         // Create event tap for flagsChanged events
         let eventMask = (1 << CGEventType.flagsChanged.rawValue)
-        
+
         // We need to use a static callback, so we pass self as userInfo
         let userInfo = Unmanaged.passUnretained(self).toOpaque()
-        
+
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
@@ -200,7 +200,7 @@ class HotkeyManager: ObservableObject {
             callback: { (proxy, type, event, refcon) -> Unmanaged<CGEvent>? in
                 guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
                 let manager = Unmanaged<HotkeyManager>.fromOpaque(refcon).takeUnretainedValue()
-                
+
                 // Handle tap disabled events
                 if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
                     logger.warning("Event tap was disabled, re-enabling...")
@@ -209,7 +209,7 @@ class HotkeyManager: ObservableObject {
                     }
                     return Unmanaged.passUnretained(event)
                 }
-                
+
                 manager.handleCGEvent(event)
                 return Unmanaged.passUnretained(event)
             },
@@ -218,16 +218,16 @@ class HotkeyManager: ObservableObject {
             logger.error("Failed to create event tap - check accessibility permissions")
             return
         }
-        
+
         eventTap = tap
-        
+
         // Create run loop source and add to MAIN run loop
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
-        
+
         // Enable the tap
         CGEvent.tapEnable(tap: tap, enable: true)
-        
+
         isListening = true
         hasAccessibilityPermission = true
         previousFlags = 0
@@ -280,7 +280,8 @@ class HotkeyManager: ObservableObject {
             print("[HotkeyManager] >>> KEY DOWN")
             isKeyDown = true
             DispatchQueue.main.async { [weak self] in
-                self?.onKeyDown?()
+                guard let self = self else { return }
+                self.onKeyDown?()
             }
         } else if !isPressed && wasPressed {
             // Key just released
@@ -288,7 +289,8 @@ class HotkeyManager: ObservableObject {
             print("[HotkeyManager] >>> KEY UP")
             isKeyDown = false
             DispatchQueue.main.async { [weak self] in
-                self?.onKeyUp?()
+                guard let self = self else { return }
+                self.onKeyUp?()
             }
         }
     }

@@ -120,14 +120,16 @@ final class AppState: ObservableObject {
         // Start recording timer
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.recordingDuration += 0.1
+                guard let self = self else { return }
+                self.recordingDuration += 0.1
             }
         }
-        
+
         // Start progressive transcription timer (checks every 10s after initial 10s)
         progressiveTranscriptionTimer = Timer.scheduledTimer(withTimeInterval: progressiveTranscriptionInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                await self?.performProgressiveTranscription()
+                guard let self = self else { return }
+                await self.performProgressiveTranscription()
             }
         }
         
@@ -237,47 +239,48 @@ final class AppState: ObservableObject {
     /// Performs progressive transcription of accumulated audio during recording.
     /// Called periodically to transcribe chunks while still recording.
     private func performProgressiveTranscription() async {
-        // Don't start a new progressive transcription if one is already in progress
+        // Atomically check and set the flag to prevent concurrent transcriptions
         guard !isProgressiveTranscribing else {
             logger.info("Progressive: skipping, transcription already in progress")
             return
         }
-        
+
         // Only transcribe if we're still recording
         guard isRecording else { return }
-        
+
         // Get current sample count
         let currentSampleCount = await AudioRecorder.shared.getCurrentSampleCount()
-        
+
         // Calculate how many new samples we have since last transcription
         let newSamplesCount = currentSampleCount - lastTranscribedSampleIndex
-        
+
         // Need at least 8000 samples (0.5s at 16kHz) to transcribe
         guard newSamplesCount >= 8000 else {
             logger.info("Progressive: not enough new samples (\(newSamplesCount))")
             return
         }
-        
+
         logger.info("Progressive: starting transcription of \(newSamplesCount) samples (from index \(self.lastTranscribedSampleIndex))")
-        
+
+        // Atomically set flag before async operation
         isProgressiveTranscribing = true
-        
+        defer { isProgressiveTranscribing = false }
+
         // Get samples from last transcribed index
         let samples = await AudioRecorder.shared.getSamplesFrom(index: lastTranscribedSampleIndex)
-        
+
         guard !samples.isEmpty else {
-            isProgressiveTranscribing = false
             return
         }
-        
+
         // Remember where we're transcribing up to BEFORE we start
         // (more samples may arrive during transcription)
         let transcribingUpToIndex = currentSampleCount
-        
+
         do {
             let language = WhisperService.shared.transcriptionLanguage
             let result = try await WhisperService.shared.transcribe(samples: samples, language: language)
-            
+
             // Only save result if we're still recording (user might have stopped)
             if isRecording {
                 let trimmedText = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -290,8 +293,6 @@ final class AppState: ObservableObject {
         } catch {
             logger.error("Progressive transcription failed: \(error.localizedDescription)")
         }
-        
-        isProgressiveTranscribing = false
     }
     
     /// Cancels the current recording without transcribing.
@@ -325,40 +326,23 @@ final class AppState: ObservableObject {
     }
     
     // MARK: - Clipboard
-    
+
     private func copyAndPaste(_ text: String) {
-        guard !text.isEmpty else { 
+        guard !text.isEmpty else {
             logger.warning("copyAndPaste: empty text, skipping")
-            return 
+            return
         }
-        
-        logger.info("copyAndPaste: copying \(text.count) chars")
-        
+
+        logger.info("copyAndPaste: copying \(text.count) chars to clipboard")
+
         // Copy to clipboard
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
-        
-        // Small delay for clipboard to be ready, then paste
+
+        // Use ClipboardManager for safe auto-paste if enabled
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 150_000_000) // 0.15s
-            
-            logger.info("copyAndPaste: simulating paste")
-            self.simulatePaste()
+            await ClipboardManager.shared.copyAndPaste(text)
         }
-    }
-    
-    private func simulatePaste() {
-        let source = CGEventSource(stateID: .hidSystemState)
-        
-        // Key down
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true) // V key
-        keyDown?.flags = .maskCommand
-        keyDown?.post(tap: .cghidEventTap)
-        
-        // Key up
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-        keyUp?.flags = .maskCommand
-        keyUp?.post(tap: .cghidEventTap)
     }
 }

@@ -8,6 +8,9 @@
 
 import Foundation
 import AVFoundation
+import os.log
+
+private let logger = Logger(subsystem: "com.betterfasterwhisper", category: "AudioRecorder")
 
 /// Error types for audio recording.
 enum AudioRecorderError: LocalizedError {
@@ -245,25 +248,30 @@ actor AudioRecorder {
         outputFormat: AVAudioFormat
     ) {
         guard let floatData = buffer.floatChannelData else { return }
-        
+
         var samplesToAdd: [Float] = []
-        
+
         if let converter = converter {
             // Need to convert sample rate
             let ratio = outputFormat.sampleRate / buffer.format.sampleRate
             let outputFrameCount = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
-            
+
             guard let outputBuffer = AVAudioPCMBuffer(
                 pcmFormat: outputFormat,
                 frameCapacity: outputFrameCount
             ) else { return }
-            
+
             var error: NSError?
             let status = converter.convert(to: outputBuffer, error: &error) { inNumPackets, outStatus in
                 outStatus.pointee = .haveData
                 return buffer
             }
-            
+
+            if let error = error {
+                logger.error("Audio conversion error: \(error.localizedDescription)")
+                return
+            }
+
             if status == .haveData, let outputData = outputBuffer.floatChannelData {
                 samplesToAdd = Array(UnsafeBufferPointer(
                     start: outputData[0],
@@ -276,7 +284,7 @@ actor AudioRecorder {
                 start: floatData[0],
                 count: Int(buffer.frameLength)
             ))
-            
+
             // Convert stereo to mono if needed
             if buffer.format.channelCount == 2, let rightChannel = buffer.floatChannelData?[1] {
                 let rightSamples = Array(UnsafeBufferPointer(
@@ -288,19 +296,19 @@ actor AudioRecorder {
                 samplesToAdd = samples
             }
         }
-        
+
         // Add to main buffer
         audioBuffer.append(contentsOf: samplesToAdd)
-        
+
         // Calculate current level and update waveform
         if !samplesToAdd.isEmpty {
             let rms = calculateRMS(samples: samplesToAdd)
             let normalizedLevel = min(1.0, rms * 8) // Amplify for visibility
-            
+
             // Shift levels and add new one
             recentLevels.removeFirst()
             recentLevels.append(normalizedLevel)
-            
+
             // Publish levels on main thread
             let levels = recentLevels
             let callback = audioLevelCallback

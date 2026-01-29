@@ -65,7 +65,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func handleHideOverlayNotification() {
         logger.info("Received hide overlay notification")
-        hideMiniOverlay()
+        DispatchQueue.main.async { [weak self] in
+            self?.hideMiniOverlay()
+        }
     }
     
     func applicationWillTerminate(_ notification: Notification) {
@@ -83,16 +85,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupPushToTalk() {
         Task { @MainActor in
             let hotkeyManager = HotkeyManager.shared
-            
+
             hotkeyManager.onKeyDown = { [weak self] in
                 Task { @MainActor in
-                    self?.handleKeyDown()
+                    guard let self = self else { return }
+                    self.handleKeyDown()
                 }
             }
-            
+
             hotkeyManager.onKeyUp = { [weak self] in
                 Task { @MainActor in
-                    self?.handleKeyUp()
+                    guard let self = self else { return }
+                    self.handleKeyUp()
                 }
             }
             
@@ -376,11 +380,12 @@ struct AudioWaveformOverlay: View {
 
 struct PulsingDotsView: View {
     @State private var animationPhase: Int = 0
-    
+    @State private var animationTimer: Timer?
+
     private let dotCount = 3
     private let dotSize: CGFloat = 5
     private let spacing: CGFloat = 4
-    
+
     var body: some View {
         HStack(spacing: spacing) {
             ForEach(0..<dotCount, id: \.self) { index in
@@ -394,22 +399,30 @@ struct PulsingDotsView: View {
         .onAppear {
             startAnimation()
         }
+        .onDisappear {
+            stopAnimation()
+        }
     }
-    
+
     private func scaleForDot(at index: Int) -> CGFloat {
         animationPhase == index ? 1.3 : 0.8
     }
-    
+
     private func opacityForDot(at index: Int) -> Double {
         animationPhase == index ? 1.0 : 0.4
     }
-    
+
     private func startAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
             withAnimation(.easeInOut(duration: 0.25)) {
                 animationPhase = (animationPhase + 1) % dotCount
             }
         }
+    }
+
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
     }
 }
 

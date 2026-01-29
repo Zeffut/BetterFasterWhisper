@@ -221,7 +221,7 @@ class ModelManager: ObservableObject {
     /// Get possible local paths where WhisperKit stores models.
     func localModelPaths(for model: WhisperModel) -> [URL] {
         var paths: [URL] = []
-        
+
         // Path 1: App container (sandboxed app)
         if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "com.betterfasterwhisper.app") {
             let path = containerURL
@@ -229,31 +229,43 @@ class ModelManager: ObservableObject {
                 .appendingPathComponent(model.rawValue)
             paths.append(path)
         }
-        
+
         // Path 2: Documents folder in container
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml/.cache/huggingface/download")
-            .appendingPathComponent(model.rawValue)
-        paths.append(documentsPath)
-        
+        if let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let documentsPath = documentsURL
+                .appendingPathComponent("huggingface/models/argmaxinc/whisperkit-coreml/.cache/huggingface/download")
+                .appendingPathComponent(model.rawValue)
+            paths.append(documentsPath)
+        }
+
         // Path 3: Library/Containers path (non-sandboxed or from Finder)
         let homeDir = FileManager.default.homeDirectoryForCurrentUser
         let containerPath = homeDir
             .appendingPathComponent("Library/Containers/com.betterfasterwhisper.app/Data/Documents/huggingface/models/argmaxinc/whisperkit-coreml/.cache/huggingface/download")
             .appendingPathComponent(model.rawValue)
         paths.append(containerPath)
-        
+
         // Path 4: Cache directory (older versions)
-        let cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("huggingface/hub/models--argmaxinc--whisperkit-coreml/snapshots")
-        paths.append(cachePath.appendingPathComponent(model.rawValue))
-        
+        if let cachesURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            let cachePath = cachesURL
+                .appendingPathComponent("huggingface/hub/models--argmaxinc--whisperkit-coreml/snapshots")
+            paths.append(cachePath.appendingPathComponent(model.rawValue))
+        }
+
         return paths
     }
-    
+
     /// Get the local path where WhisperKit stores models (for compatibility).
     func localModelPath(for model: WhisperModel) -> URL {
-        localModelPaths(for: model).first!
+        // Return the first available path, or a default path if none exist
+        if let firstPath = localModelPaths(for: model).first {
+            return firstPath
+        }
+        // Fallback to documents directory if all else fails
+        let homeDir = FileManager.default.homeDirectoryForCurrentUser
+        return homeDir
+            .appendingPathComponent("Library/Containers/com.betterfasterwhisper.app/Data/Documents/huggingface/models/argmaxinc/whisperkit-coreml/.cache/huggingface/download")
+            .appendingPathComponent(model.rawValue)
     }
     
     /// Check if a model is available for download.
