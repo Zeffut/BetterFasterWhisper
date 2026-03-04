@@ -8,6 +8,7 @@
 
 import Foundation
 import AVFoundation
+import Accelerate
 import os.log
 
 private let logger = Logger(subsystem: "com.betterfasterwhisper", category: "AudioRecorder")
@@ -53,7 +54,14 @@ actor AudioRecorder {
     private var audioLevelCallback: (([Float]) -> Void)?
     
     /// Number of bars in the waveform visualization
-    private let waveformBarCount = 12
+    private let waveformBarCount = 20   // 20 FFT frequency bands
+    private let fftSize = 1024
+    private let fftBandCount = 20
+    private let fftMinHz: Float = 80
+    private let fftMaxHz: Float = 8000
+    private var fftSetup: FFTSetup?
+    private var fftWindow: [Float] = []
+    private var fftRollingBuffer: [Float] = []
     
     /// Recent audio levels for waveform display
     private var recentLevels: [Float] = []
@@ -62,6 +70,12 @@ actor AudioRecorder {
     
     private init() {
         recentLevels = Array(repeating: 0, count: waveformBarCount)
+        // FFT setup
+        let log2n = vDSP_Length(log2(Float(fftSize)))
+        fftSetup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2))
+        fftWindow = [Float](repeating: 0, count: fftSize)
+        vDSP_hann_window(&fftWindow, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
+        fftRollingBuffer = [Float](repeating: 0, count: fftSize)
     }
     
     // MARK: - Public Methods
@@ -109,6 +123,7 @@ actor AudioRecorder {
         // Clear previous buffer
         audioBuffer.removeAll()
         recentLevels = Array(repeating: 0, count: waveformBarCount)
+        fftRollingBuffer = [Float](repeating: 0, count: fftSize)
         
         // Install tap on input
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: nativeFormat) { [weak self] buffer, time in
@@ -300,24 +315,70 @@ actor AudioRecorder {
         // Add to main buffer
         audioBuffer.append(contentsOf: samplesToAdd)
 
-        // Calculate current level and update waveform
-        if !samplesToAdd.isEmpty {
-            let rms = calculateRMS(samples: samplesToAdd)
-            let normalizedLevel = min(1.0, rms * 8) // Amplify for visibility
+        // Accumulate into rolling FFT buffer
+        fftRollingBuffer.append(contentsOf: samplesToAdd)
+        if fftRollingBuffer.count > fftSize {
+            fftRollingBuffer.removeFirst(fftRollingBuffer.count - fftSize)
+        }
 
-            // Shift levels and add new one
-            recentLevels.removeFirst()
-            recentLevels.append(normalizedLevel)
-
-            // Publish levels on main thread
-            let levels = recentLevels
+        // Compute FFT bands once we have a full window
+        if fftRollingBuffer.count == fftSize {
+            let bands = computeFFTBands(from: fftRollingBuffer)
+            recentLevels = bands
             let callback = audioLevelCallback
             DispatchQueue.main.async {
-                callback?(levels)
+                callback?(bands)
             }
         }
     }
     
+    private func computeFFTBands(from samples: [Float]) -> [Float] {
+        guard let setup = fftSetup, samples.count == fftSize else {
+            return [Float](repeating: 0, count: fftBandCount)
+        }
+
+        // Apply Hann window
+        var windowed = [Float](repeating: 0, count: fftSize)
+        vDSP_vmul(samples, 1, fftWindow, 1, &windowed, 1, vDSP_Length(fftSize))
+
+        // Pack real samples into split-complex format
+        var realPart = [Float](repeating: 0, count: fftSize / 2)
+        var imagPart = [Float](repeating: 0, count: fftSize / 2)
+        let log2n = vDSP_Length(log2(Float(fftSize)))
+        var result = [Float](repeating: 0, count: fftBandCount)
+
+        realPart.withUnsafeMutableBufferPointer { rBuf in
+            imagPart.withUnsafeMutableBufferPointer { iBuf in
+                var split = DSPSplitComplex(realp: rBuf.baseAddress!, imagp: iBuf.baseAddress!)
+                windowed.withUnsafeBytes { rawBytes in
+                    rawBytes.bindMemory(to: DSPComplex.self).baseAddress.map { cPtr in
+                        vDSP_ctoz(cPtr, 2, &split, 1, vDSP_Length(fftSize / 2))
+                        vDSP_fft_zrip(setup, &split, 1, log2n, FFTDirection(FFT_FORWARD))
+                        var magnitudes = [Float](repeating: 0, count: fftSize / 2)
+                        vDSP_zvmags(&split, 1, &magnitudes, 1, vDSP_Length(fftSize / 2))
+
+                        let hzPerBin = Float(targetSampleRate) / Float(fftSize)
+                        magnitudes.withUnsafeBufferPointer { magBuf in
+                            for i in 0..<fftBandCount {
+                                let fLow  = fftMinHz * pow(fftMaxHz / fftMinHz, Float(i)     / Float(fftBandCount))
+                                let fHigh = fftMinHz * pow(fftMaxHz / fftMinHz, Float(i + 1) / Float(fftBandCount))
+                                let binLow  = max(1, Int(fLow  / hzPerBin))
+                                let binHigh = min(fftSize / 2 - 1, Int(fHigh / hzPerBin))
+                                guard binLow <= binHigh else { continue }
+                                var avg: Float = 0
+                                vDSP_meanv(magBuf.baseAddress!.advanced(by: binLow), 1, &avg, vDSP_Length(binHigh - binLow + 1))
+                                // dB normalization: map [-80dB, 0dB] → [0, 1]
+                                let db = 10 * log10f(avg + 1e-10)
+                                result[i] = max(0, min(1, (db + 80) / 80))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return result
+    }
+
     private func calculateRMS(samples: [Float]) -> Float {
         guard !samples.isEmpty else { return 0 }
         let sumOfSquares = samples.reduce(0) { $0 + $1 * $1 }

@@ -250,6 +250,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func showMiniOverlay() {
+        // Sync effective style with user preference for push-to-talk
+        if transientOverlayStyle == nil {
+            let preferred = UserDefaults.standard.string(forKey: "overlayStyle") ?? "mini"
+            AudioLevelManager.shared.effectiveOverlayStyle = preferred
+        }
+
         // Re-create window if size changed (e.g. style switched in Settings)
         if let existing = miniOverlayWindow,
            existing.frame.size != overlaySize {
@@ -352,7 +358,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 class AudioLevelManager: ObservableObject {
     static let shared = AudioLevelManager()
     
-    @Published var audioLevels: [Float] = Array(repeating: 0.05, count: 12)
+    @Published var audioLevels: [Float] = Array(repeating: 0, count: 20)
     @Published var isModelLoading: Bool = true
     @Published var isTranscribing: Bool = false
     @Published var statusMessage: String = "Loading model..."
@@ -373,7 +379,7 @@ class AudioLevelManager: ObservableObject {
     }
     
     func reset() {
-        audioLevels = Array(repeating: 0.05, count: 12)
+        audioLevels = Array(repeating: 0, count: 20)
     }
     
     func setLoading(_ loading: Bool, message: String = "") {
@@ -590,23 +596,19 @@ struct LargeOverlayContent: View {
 
             Spacer()
 
-            // Center: timer (hidden during transcription/loading)
-            if !levelManager.isModelLoading && !levelManager.isTranscribing {
-                Text(formatDuration(levelManager.recordingDuration))
-                    .foregroundColor(.white.opacity(0.45))
-                    .font(.system(size: 12, weight: .light, design: .monospaced))
-            }
+            // Right: timer + optional Stop/Cancel buttons
+            HStack(spacing: 8) {
+                if !levelManager.isModelLoading && !levelManager.isTranscribing {
+                    Text(formatDuration(levelManager.recordingDuration))
+                        .foregroundColor(.white.opacity(0.45))
+                        .font(.system(size: 12, weight: .light, design: .monospaced))
+                }
 
-            Spacer()
-
-            // Right: Stop + Cancel (classic recording only)
-            if levelManager.isClassicRecording {
-                HStack(spacing: 8) {
+                if levelManager.isClassicRecording {
                     Button("Stop") {
                         AudioLevelManager.shared.isClassicRecording = false
                         AppState.shared.stopRecording()
                         MediaControlManager.shared.resumeMedia()
-                        // Safety timeout: hide overlay if transcription doesn't complete
                         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
                             if !AppState.shared.isRecording && !AppState.shared.isTranscribing {
                                 NotificationCenter.default.post(name: .hideOverlay, object: nil)
@@ -623,10 +625,8 @@ struct LargeOverlayContent: View {
                     }
                     .buttonStyle(OverlayButtonStyle(isDestructive: true))
                 }
-                .padding(.trailing, 16)
-            } else {
-                Spacer().frame(width: 16)
             }
+            .padding(.trailing, 16)
         }
     }
 
