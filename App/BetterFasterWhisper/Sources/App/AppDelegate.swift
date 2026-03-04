@@ -383,7 +383,7 @@ struct AudioWaveformOverlay: View {
                     ForEach(0..<barCount, id: \.self) { index in
                         RoundedRectangle(cornerRadius: 1)
                             .fill(Color.white)
-                            .frame(width: 2, height: barHeight(for: levelManager.audioLevels[index]))
+                            .frame(width: 2, height: barHeight(for: levelManager.audioLevels[index % levelManager.audioLevels.count]))
                     }
                 }
                 .animation(.easeOut(duration: 0.08), value: levelManager.audioLevels)

@@ -106,11 +106,11 @@ struct GeneralSettingsView: View {
             
             Section("Overlay") {
                 Picker("Style", selection: $overlayStyle) {
-                    Text("Mini (près du notch)").tag("mini")
-                    Text("Large (avec waveform élargie)").tag("large")
+                    Text("Mini (near notch)").tag("mini")
+                    Text("Large (expanded waveform)").tag("large")
                 }
                 .pickerStyle(.menu)
-                Text("La grande gélule affiche la forme d'onde, le statut et la durée d'enregistrement.")
+                Text("The large capsule shows the waveform, status, and recording duration. Takes effect after restarting the app.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
