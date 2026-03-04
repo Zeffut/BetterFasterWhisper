@@ -220,7 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlaySize: NSSize {
         let style = UserDefaults.standard.string(forKey: "overlayStyle") ?? "mini"
         return style == "large"
-            ? NSSize(width: 500, height: 64)
+            ? NSSize(width: 520, height: 120)
             : NSSize(width: 72, height: 28)
     }
 
@@ -300,6 +300,7 @@ class AudioLevelManager: ObservableObject {
     @Published var isTranscribing: Bool = false
     @Published var statusMessage: String = "Loading model..."
     @Published var recordingDuration: TimeInterval = 0
+    @Published var isClassicRecording: Bool = false
 
     var statusColor: Color {
         if isModelLoading { return .gray }
