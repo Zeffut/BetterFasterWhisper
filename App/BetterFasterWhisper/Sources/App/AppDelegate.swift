@@ -321,33 +321,40 @@ class AudioLevelManager: ObservableObject {
 
 struct AudioWaveformOverlay: View {
     @ObservedObject var levelManager = AudioLevelManager.shared
-    
+    @AppStorage("overlayStyle") private var overlayStyle: String = "mini"
+
     // Dimensions
     private let waveformWidth: CGFloat = 72
     private let waveformHeight: CGFloat = 28
     private let spinnerWidth: CGFloat = 45  // Wider for 3 dots
     private let spinnerHeight: CGFloat = 24 // Shorter height
     private let barCount = 12
-    
+
     /// Current width based on state
     private var currentWidth: CGFloat {
         levelManager.isTranscribing ? spinnerWidth : waveformWidth
     }
-    
+
     /// Current height based on state
     private var currentHeight: CGFloat {
         levelManager.isTranscribing ? spinnerHeight : waveformHeight
     }
-    
+
     var body: some View {
+        if overlayStyle == "large" {
+            LargeOverlayContent()
+        } else {
+            miniBody
+        }
+    }
+
+    private var miniBody: some View {
         ZStack {
-            // Background capsule - adapts to content (becomes circle when transcribing)
             Capsule()
                 .fill(Color.black.opacity(0.9))
                 .frame(width: currentWidth, height: currentHeight)
-            
+
             if levelManager.isModelLoading {
-                // Show loading state (model loading)
                 HStack(spacing: 4) {
                     PulsingDotsView()
                     Text("Loading...")
@@ -356,10 +363,8 @@ struct AudioWaveformOverlay: View {
                         .lineLimit(1)
                 }
             } else if levelManager.isTranscribing {
-                // Show transcribing state (pulsing dots)
                 PulsingDotsView()
             } else {
-                // Show waveform - bars are centered vertically
                 HStack(spacing: 2) {
                     ForEach(0..<barCount, id: \.self) { index in
                         RoundedRectangle(cornerRadius: 1)
@@ -370,10 +375,10 @@ struct AudioWaveformOverlay: View {
                 .animation(.easeOut(duration: 0.08), value: levelManager.audioLevels)
             }
         }
-        .frame(width: waveformWidth, height: waveformHeight) // Keep frame constant for window
+        .frame(width: waveformWidth, height: waveformHeight)
         .animation(.easeInOut(duration: 0.2), value: levelManager.isTranscribing)
     }
-    
+
     private func barHeight(for level: Float) -> CGFloat {
         let minHeight: CGFloat = 4
         let maxHeight: CGFloat = 18
