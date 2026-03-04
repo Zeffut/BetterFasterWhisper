@@ -484,11 +484,11 @@ struct ShortcutsSettingsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Trigger Key")
                         .font(.headline)
-                    
+
                     Text("Hold down this key to record, release to transcribe")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    
+
                     Picker("Trigger Key", selection: $hotkeyManager.triggerKey) {
                         ForEach(TriggerKey.allCases) { key in
                             Text(key.displayName).tag(key)
@@ -496,6 +496,24 @@ struct ShortcutsSettingsView: View {
                     }
                     .pickerStyle(.menu)
                     .labelsHidden()
+                }
+                .padding(.vertical, 8)
+            }
+
+            Section("Classic Recording") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Global Shortcut")
+                        .font(.headline)
+
+                    Text("Press once to start recording, press again (or click Stop) to transcribe. Esc cancels.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    ShortcutCaptureField(shortcut: Binding(
+                        get: { hotkeyManager.classicShortcut },
+                        set: { hotkeyManager.classicShortcut = $0 }
+                    ))
+                    .frame(height: 32)
                 }
                 .padding(.vertical, 8)
             }
@@ -607,6 +625,136 @@ struct AboutSettingsView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Shortcut Capture Field
+
+struct ShortcutCaptureField: NSViewRepresentable {
+    @Binding var shortcut: ClassicShortcut?
+
+    func makeNSView(context: Context) -> ShortcutCaptureNSView {
+        let view = ShortcutCaptureNSView()
+        view.onShortcutChanged = { newShortcut in
+            shortcut = newShortcut
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: ShortcutCaptureNSView, context: Context) {
+        nsView.currentShortcut = shortcut
+    }
+}
+
+class ShortcutCaptureNSView: NSView {
+    var currentShortcut: ClassicShortcut? { didSet { updateDisplay() } }
+    var onShortcutChanged: ((ClassicShortcut?) -> Void)?
+
+    private var isCapturing = false
+    private let label = NSTextField(labelWithString: "")
+    private let clearButton = NSButton(title: "×", target: nil, action: nil)
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setup()
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    private func setup() {
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.borderWidth = 1
+
+        label.isEditable = false
+        label.isBordered = false
+        label.backgroundColor = .clear
+        label.alignment = .center
+        label.font = .monospacedSystemFont(ofSize: 13, weight: .medium)
+        addSubview(label)
+
+        clearButton.bezelStyle = .rounded
+        clearButton.isBordered = false
+        clearButton.font = .systemFont(ofSize: 14)
+        clearButton.target = self
+        clearButton.action = #selector(clearShortcut)
+        addSubview(clearButton)
+
+        let click = NSClickGestureRecognizer(target: self, action: #selector(startCapture))
+        addGestureRecognizer(click)
+
+        updateDisplay()
+    }
+
+    override func layout() {
+        super.layout()
+        let w = bounds.width, h = bounds.height
+        let btnW: CGFloat = clearButton.isHidden ? 0 : h
+        clearButton.frame = NSRect(x: w - btnW, y: 0, width: btnW, height: h)
+        label.frame = NSRect(x: 8, y: 0, width: w - btnW - 8, height: h)
+    }
+
+    private func updateDisplay() {
+        if isCapturing {
+            label.stringValue = "Press keys..."
+            label.textColor = .white
+            layer?.backgroundColor = NSColor.systemBlue.cgColor
+            layer?.borderColor = NSColor.clear.cgColor
+            clearButton.isHidden = true
+        } else if let s = currentShortcut {
+            label.stringValue = s.displayString
+            label.textColor = .labelColor
+            layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+            layer?.borderColor = NSColor.separatorColor.cgColor
+            clearButton.isHidden = false
+        } else {
+            label.stringValue = "Click to record shortcut"
+            label.textColor = .placeholderTextColor
+            layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+            layer?.borderColor = NSColor.separatorColor.cgColor
+            clearButton.isHidden = true
+        }
+        needsLayout = true
+    }
+
+    @objc private func startCapture() {
+        guard !isCapturing else { return }
+        isCapturing = true
+        window?.makeFirstResponder(self)
+        updateDisplay()
+    }
+
+    @objc private func clearShortcut() {
+        onShortcutChanged?(nil)
+        isCapturing = false
+        updateDisplay()
+    }
+
+    override var acceptsFirstResponder: Bool { true }
+    override var canBecomeKeyView: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        guard isCapturing else { return }
+
+        // Escape cancels capture without changing shortcut
+        if event.keyCode == 53 {
+            isCapturing = false
+            updateDisplay()
+            return
+        }
+
+        // Build modifier flags from NSEvent
+        var flags: UInt64 = 0
+        if event.modifierFlags.contains(.control) { flags |= CGEventFlags.maskControl.rawValue }
+        if event.modifierFlags.contains(.option)  { flags |= CGEventFlags.maskAlternate.rawValue }
+        if event.modifierFlags.contains(.shift)   { flags |= CGEventFlags.maskShift.rawValue }
+        if event.modifierFlags.contains(.command) { flags |= CGEventFlags.maskCommand.rawValue }
+
+        guard flags != 0 else { return } // Need at least one modifier
+
+        let captured = ClassicShortcut(keyCode: event.keyCode, modifierFlags: flags)
+        isCapturing = false
+        onShortcutChanged?(captured)
+        updateDisplay()
     }
 }
 
