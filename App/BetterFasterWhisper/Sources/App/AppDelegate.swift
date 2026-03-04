@@ -285,7 +285,14 @@ class AudioLevelManager: ObservableObject {
     @Published var isModelLoading: Bool = true
     @Published var isTranscribing: Bool = false
     @Published var statusMessage: String = "Loading model..."
-    
+    @Published var recordingDuration: TimeInterval = 0
+
+    var statusColor: Color {
+        if isModelLoading { return .gray }
+        if isTranscribing { return .orange }
+        return .blue  // recording
+    }
+
     func updateLevels(_ levels: [Float]) {
         DispatchQueue.main.async {
             self.audioLevels = levels

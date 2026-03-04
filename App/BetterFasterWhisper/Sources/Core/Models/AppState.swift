@@ -122,6 +122,7 @@ final class AppState: ObservableObject {
             Task { @MainActor in
                 guard let self = self else { return }
                 self.recordingDuration += 0.1
+                AudioLevelManager.shared.recordingDuration = self.recordingDuration
             }
         }
 
@@ -212,25 +213,27 @@ final class AppState: ObservableObject {
                 
                 await MainActor.run {
                     self.lastTranscription = finalResult
-                    
+
                     // Hide overlay immediately (before resetting isTranscribing to avoid flash back to waveform)
                     NotificationCenter.default.post(name: .hideOverlay, object: nil)
-                    
+
                     self.isTranscribing = false
                     AudioLevelManager.shared.setTranscribing(false)
-                    
+                    AudioLevelManager.shared.recordingDuration = 0
+
                     // Copy to clipboard and paste
                     self.copyAndPaste(finalResult.text)
                 }
             } catch {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
-                    
+
                     // Hide overlay immediately on error too
                     NotificationCenter.default.post(name: .hideOverlay, object: nil)
-                    
+
                     self.isTranscribing = false
                     AudioLevelManager.shared.setTranscribing(false)
+                    AudioLevelManager.shared.recordingDuration = 0
                 }
             }
         }
@@ -313,7 +316,9 @@ final class AppState: ObservableObject {
         Task {
             await AudioRecorder.shared.cancelRecording()
         }
-        
+
+        AudioLevelManager.shared.recordingDuration = 0
+
         // Hide recording panel
         if let appDelegate = NSApp.delegate as? AppDelegate {
             appDelegate.hideRecordingPanel()
