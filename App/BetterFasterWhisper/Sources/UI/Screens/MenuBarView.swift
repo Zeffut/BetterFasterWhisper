@@ -191,6 +191,10 @@ struct SettingsButtonView: View {
         Button("Settings") {
             NSApp.activate(ignoringOtherApps: true)
             NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            // Move the settings window to the current Space after it appears
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                NSApp.keyWindow?.collectionBehavior.insert(.moveToActiveSpace)
+            }
         }
     }
 }

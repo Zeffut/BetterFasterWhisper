@@ -11,7 +11,7 @@ A powerful voice-to-text application for macOS that aims to match and exceed Sup
 
 ## Why BetterFasterWhisper?
 
-**SuperWhisper** is a fantastic app, but it costs **$8/month** (or $96/year). That's a lot for something that runs entirely on your own hardware.
+**SuperWhisper** is a fantastic app, but it costs **$8/month** (or $96/year). That's a lot for something that can runs entirely on your own hardware.
 
 **BetterFasterWhisper** gives you the same experience:
 - Same push-to-talk workflow

@@ -444,11 +444,11 @@ struct AudioWaveformOverlay: View {
                 let bands = Array(levelManager.audioLevels.prefix(6))
                 let mirrored: [Float] = Array(bands.reversed()) + Array(bands)
 
-                HStack(spacing: 2) {
+                HStack(spacing: 1) {
                     ForEach(Array(mirrored.enumerated()), id: \.offset) { _, level in
                         RoundedRectangle(cornerRadius: 1)
                             .fill(Color.white)
-                            .frame(width: 2, height: barHeight(for: level))
+                            .frame(width: 5, height: barHeight(for: level))
                     }
                 }
                 .animation(.spring(duration: 0.15), value: levelManager.audioLevels)
@@ -459,11 +459,9 @@ struct AudioWaveformOverlay: View {
     }
 
     private func barHeight(for level: Float) -> CGFloat {
-        let minHeight: CGFloat = 4
+        let minHeight: CGFloat = 3
         let maxHeight: CGFloat = 18
-        // Amplify the level for more visible movement
-        let amplifiedLevel = min(1.0, level * 1.8)
-        return minHeight + CGFloat(amplifiedLevel) * (maxHeight - minHeight)
+        return minHeight + CGFloat(min(1.0, level)) * (maxHeight - minHeight)
     }
 }
 
@@ -571,9 +569,9 @@ struct LargeOverlayContent: View {
 
             HStack(spacing: 2) {
                 ForEach(Array(mirrored.enumerated()), id: \.offset) { _, level in
-                    RoundedRectangle(cornerRadius: 2)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(Color.white)
-                        .frame(width: 3, height: barHeight(for: level))
+                        .frame(width: 11, height: barHeight(for: level))
                 }
             }
             .animation(.spring(duration: 0.15), value: levelManager.audioLevels)
@@ -643,8 +641,7 @@ struct LargeOverlayContent: View {
     private func barHeight(for level: Float) -> CGFloat {
         let minH: CGFloat = 3
         let maxH: CGFloat = 64
-        let amplified = min(1.0, level * 3.5)
-        return minH + CGFloat(amplified) * (maxH - minH)
+        return minH + CGFloat(min(1.0, level)) * (maxH - minH)
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {

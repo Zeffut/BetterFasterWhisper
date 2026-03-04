@@ -382,9 +382,10 @@ actor AudioRecorder {
                                 guard binLow <= binHigh else { continue }
                                 var avg: Float = 0
                                 vDSP_meanv(magBuf.baseAddress!.advanced(by: binLow), 1, &avg, vDSP_Length(binHigh - binLow + 1))
-                                // dB normalization: map [-80dB, 0dB] → [0, 1]
+                                // dB normalization: vDSP_zvmags gives squared power, so typical
+                                // speech values are +10 to +40 dB. Map [0, 45] dB → [0, 1].
                                 let db = 10 * log10f(avg + 1e-10)
-                                result[i] = max(0, min(1, (db + 80) / 80))
+                                result[i] = max(0, min(1, db / 45))
                             }
                         }
                     }
