@@ -196,10 +196,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Mini Overlay
     
     func showMiniOverlay() {
+        // Re-create window if size changed (e.g. style switched in Settings)
+        if let existing = miniOverlayWindow,
+           existing.frame.size != overlaySize {
+            existing.orderOut(nil)
+            miniOverlayWindow = nil
+        }
+
         if miniOverlayWindow == nil {
             createMiniOverlay()
         }
-        
+
         AudioLevelManager.shared.reset()
         positionMiniOverlay()
         miniOverlayWindow?.orderFront(nil)
@@ -210,13 +217,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AudioLevelManager.shared.reset()
     }
     
+    private var overlaySize: NSSize {
+        let style = UserDefaults.standard.string(forKey: "overlayStyle") ?? "mini"
+        return style == "large"
+            ? NSSize(width: 500, height: 52)
+            : NSSize(width: 72, height: 28)
+    }
+
     private func createMiniOverlay() {
         let overlayView = AudioWaveformOverlay()
         let hostingView = NSHostingView(rootView: overlayView)
         
         // Fixed window size matching the SwiftUI view size
-        let windowWidth: CGFloat = 72
-        let windowHeight: CGFloat = 28
+        let windowWidth = overlaySize.width
+        let windowHeight = overlaySize.height
         
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight),
@@ -245,8 +259,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let screenFrame = screen.frame
         
         // Fixed window size
-        let windowWidth: CGFloat = 72
-        let windowHeight: CGFloat = 28
+        let windowWidth = overlaySize.width
+        let windowHeight = overlaySize.height
         
         // Ensure window has correct size
         window.setContentSize(NSSize(width: windowWidth, height: windowHeight))
