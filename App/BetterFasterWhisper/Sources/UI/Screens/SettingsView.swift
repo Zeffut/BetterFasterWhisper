@@ -67,6 +67,7 @@ struct GeneralSettingsView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
     @AppStorage("showInDock") private var showInDock = false
     @AppStorage("playSound") private var playSound = true
+    @AppStorage("overlayStyle") private var overlayStyle: String = "mini"
     @AppStorage("selectedLanguage") private var selectedLanguage = "auto"
     
     @ObservedObject private var clipboardManager = ClipboardManager.shared
@@ -103,6 +104,17 @@ struct GeneralSettingsView: View {
                 Toggle("Play sound effects", isOn: $playSound)
             }
             
+            Section("Overlay") {
+                Picker("Style", selection: $overlayStyle) {
+                    Text("Mini (près du notch)").tag("mini")
+                    Text("Large (avec waveform élargie)").tag("large")
+                }
+                .pickerStyle(.menu)
+                Text("La grande gélule affiche la forme d'onde, le statut et la durée d'enregistrement.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Media") {
                 Toggle("Pause media when recording", isOn: $mediaControlManager.pauseMediaOnRecord)
                 Text("Automatically pause playing media when you start recording")
