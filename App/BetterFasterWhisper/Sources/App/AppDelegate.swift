@@ -527,7 +527,6 @@ struct PulsingDotsView: View {
 struct LargeOverlayContent: View {
     @ObservedObject var levelManager = AudioLevelManager.shared
 
-    private let barCount = 40
     private let panelWidth: CGFloat = 520
     private let panelHeight: CGFloat = 120
     private let waveformHeight: CGFloat = 76
@@ -566,15 +565,17 @@ struct LargeOverlayContent: View {
         } else if levelManager.isTranscribing {
             PulsingDotsView()
         } else {
+            let bands = levelManager.audioLevels
+            let mirrored: [Float] = Array(bands.reversed()) + Array(bands)
+
             HStack(spacing: 2) {
-                ForEach(0..<barCount, id: \.self) { index in
-                    let level = levelManager.audioLevels[index % levelManager.audioLevels.count]
+                ForEach(Array(mirrored.enumerated()), id: \.offset) { _, level in
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Color.white)
                         .frame(width: 3, height: barHeight(for: level))
                 }
             }
-            .animation(.easeOut(duration: 0.06), value: levelManager.audioLevels)
+            .animation(.spring(duration: 0.15), value: levelManager.audioLevels)
         }
     }
 
