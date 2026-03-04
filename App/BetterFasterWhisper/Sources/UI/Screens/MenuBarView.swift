@@ -185,17 +185,12 @@ struct ModeButton: View {
     }
 }
 
-/// Settings button that works on macOS 13 and 14+
+/// Settings button that works on macOS 13+
 struct SettingsButtonView: View {
     var body: some View {
-        if #available(macOS 14.0, *) {
-            SettingsLink {
-                Text("Settings")
-            }
-        } else {
-            Button("Settings") {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            }
+        Button("Settings") {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         }
     }
 }
