@@ -464,87 +464,139 @@ struct PulsingDotsView: View {
 struct LargeOverlayContent: View {
     @ObservedObject var levelManager = AudioLevelManager.shared
 
-    private let barCount = 28
-    private let capsuleHeight: CGFloat = 64
-    private let capsuleWidth: CGFloat = 500
+    private let barCount = 40
+    private let panelWidth: CGFloat = 520
+    private let panelHeight: CGFloat = 120
+    private let waveformHeight: CGFloat = 76
+    private let controlBarHeight: CGFloat = 44
 
     var body: some View {
         ZStack {
-            // Background
-            Capsule()
+            RoundedRectangle(cornerRadius: 16)
                 .fill(Color.black.opacity(0.88))
-                .frame(width: capsuleWidth, height: capsuleHeight)
+                .frame(width: panelWidth, height: panelHeight)
 
-            HStack(spacing: 0) {
-                // Left: status dot + mode label
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(levelManager.statusColor)
-                        .frame(width: 8, height: 8)
+            VStack(spacing: 0) {
+                waveformArea
+                    .frame(width: panelWidth, height: waveformHeight)
+                    .clipped()
 
-                    if levelManager.isModelLoading {
-                        Text("Loading...")
-                            .foregroundColor(.white.opacity(0.6))
-                            .font(.system(size: 12, weight: .medium))
-                    } else if levelManager.isTranscribing {
-                        Text("Processing...")
-                            .foregroundColor(.white.opacity(0.6))
-                            .font(.system(size: 12, weight: .medium))
-                    } else {
-                        Text("Voice")
-                            .foregroundColor(.white.opacity(0.7))
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                }
-                .frame(width: 80, alignment: .leading)
-                .padding(.leading, 16)
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: 1)
 
-                Spacer()
-
-                // Center: waveform or pulsing dots
-                if levelManager.isModelLoading {
-                    EmptyView()
-                } else if levelManager.isTranscribing {
-                    PulsingDotsView()
-                } else {
-                    HStack(spacing: 2) {
-                        ForEach(0..<barCount, id: \.self) { index in
-                            let level = levelManager.audioLevels[index % levelManager.audioLevels.count]
-                            RoundedRectangle(cornerRadius: 2)
-                                .fill(Color.white)
-                                .frame(width: 3, height: barHeight(for: level))
-                        }
-                    }
-                    .animation(.easeOut(duration: 0.08), value: levelManager.audioLevels)
-                }
-
-                Spacer()
-
-                // Right: timer
-                if !levelManager.isModelLoading && !levelManager.isTranscribing {
-                    Text(formatDuration(levelManager.recordingDuration))
-                        .foregroundColor(.white.opacity(0.5))
-                        .font(.system(size: 12, weight: .light, design: .monospaced))
-                        .frame(width: 40, alignment: .trailing)
-                        .padding(.trailing, 16)
-                } else {
-                    Spacer().frame(width: 56)
-                }
+                controlBar
+                    .frame(width: panelWidth, height: controlBarHeight)
             }
         }
-        .frame(width: capsuleWidth, height: capsuleHeight)
+        .frame(width: panelWidth, height: panelHeight)
+    }
+
+    // MARK: Waveform
+
+    @ViewBuilder
+    private var waveformArea: some View {
+        if levelManager.isModelLoading {
+            Text("Loading model...")
+                .foregroundColor(.white.opacity(0.45))
+                .font(.system(size: 13, weight: .medium))
+        } else if levelManager.isTranscribing {
+            PulsingDotsView()
+        } else {
+            HStack(spacing: 2) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    let level = levelManager.audioLevels[index % levelManager.audioLevels.count]
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.white)
+                        .frame(width: 3, height: barHeight(for: level))
+                }
+            }
+            .animation(.easeOut(duration: 0.06), value: levelManager.audioLevels)
+        }
+    }
+
+    // MARK: Control Bar
+
+    private var controlBar: some View {
+        HStack(spacing: 0) {
+            // Left: status dot + state label
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(levelManager.statusColor)
+                    .frame(width: 8, height: 8)
+                Text(stateLabel)
+                    .foregroundColor(.white.opacity(0.7))
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .frame(width: 110, alignment: .leading)
+            .padding(.leading, 16)
+
+            Spacer()
+
+            // Center: timer (hidden during transcription/loading)
+            if !levelManager.isModelLoading && !levelManager.isTranscribing {
+                Text(formatDuration(levelManager.recordingDuration))
+                    .foregroundColor(.white.opacity(0.45))
+                    .font(.system(size: 12, weight: .light, design: .monospaced))
+            }
+
+            Spacer()
+
+            // Right: Stop + Cancel (classic recording only)
+            if levelManager.isClassicRecording {
+                HStack(spacing: 8) {
+                    Button("Stop") {
+                        AudioLevelManager.shared.isClassicRecording = false
+                        AppState.shared.stopRecording()
+                    }
+                    .buttonStyle(OverlayButtonStyle(isDestructive: false))
+
+                    Button("Cancel") {
+                        AudioLevelManager.shared.isClassicRecording = false
+                        AppState.shared.cancelRecording()
+                    }
+                    .buttonStyle(OverlayButtonStyle(isDestructive: true))
+                }
+                .padding(.trailing, 16)
+            } else {
+                Spacer().frame(width: 16)
+            }
+        }
+    }
+
+    // MARK: Helpers
+
+    private var stateLabel: String {
+        if levelManager.isModelLoading { return "Loading..." }
+        if levelManager.isTranscribing { return "Processing..." }
+        return "Voice"
     }
 
     private func barHeight(for level: Float) -> CGFloat {
-        let minH: CGFloat = 4
-        let maxH: CGFloat = 50
-        let amplified = min(1.0, level * 3.0)
+        let minH: CGFloat = 3
+        let maxH: CGFloat = 64
+        let amplified = min(1.0, level * 3.5)
         return minH + CGFloat(amplified) * (maxH - minH)
     }
 
     private func formatDuration(_ seconds: TimeInterval) -> String {
         let s = Int(seconds)
         return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+// MARK: - Overlay Button Style
+
+struct OverlayButtonStyle: ButtonStyle {
+    let isDestructive: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 12, weight: .medium))
+            .foregroundColor(isDestructive ? Color.red.opacity(0.9) : Color.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color.white.opacity(configuration.isPressed ? 0.25 : 0.12))
+            .clipShape(Capsule())
     }
 }
 
