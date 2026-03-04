@@ -602,6 +602,12 @@ struct LargeOverlayContent: View {
                         AudioLevelManager.shared.isClassicRecording = false
                         AppState.shared.stopRecording()
                         MediaControlManager.shared.resumeMedia()
+                        // Safety timeout: hide overlay if transcription doesn't complete
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+                            if !AppState.shared.isRecording && !AppState.shared.isTranscribing {
+                                NotificationCenter.default.post(name: .hideOverlay, object: nil)
+                            }
+                        }
                     }
                     .buttonStyle(OverlayButtonStyle(isDestructive: false))
 
