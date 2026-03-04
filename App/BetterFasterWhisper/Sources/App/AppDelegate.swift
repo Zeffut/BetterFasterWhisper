@@ -183,12 +183,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             // Start recording
             showLargeOverlay()
+            AudioLevelManager.shared.isClassicRecording = true  // set early so Escape always works
             guard AppState.shared.isEngineReady else {
                 AudioLevelManager.shared.setLoading(true, message: "Loading model...")
                 return
             }
             AudioLevelManager.shared.setLoading(false)
-            AudioLevelManager.shared.isClassicRecording = true
             MediaControlManager.shared.pauseMedia()
             AppState.shared.startRecording()
         }
@@ -244,7 +244,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     func showLargeOverlay() {
         transientOverlayStyle = "large"
+        AudioLevelManager.shared.effectiveOverlayStyle = "large"
         showMiniOverlay()
+        miniOverlayWindow?.ignoresMouseEvents = false
     }
 
     func showMiniOverlay() {
@@ -265,6 +267,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func hideMiniOverlay() {
+        miniOverlayWindow?.ignoresMouseEvents = true  // restore before hiding
+        AudioLevelManager.shared.effectiveOverlayStyle = "mini"
         miniOverlayWindow?.orderOut(nil)
         transientOverlayStyle = nil
         AudioLevelManager.shared.reset()
@@ -354,6 +358,7 @@ class AudioLevelManager: ObservableObject {
     @Published var statusMessage: String = "Loading model..."
     @Published var recordingDuration: TimeInterval = 0
     @Published var isClassicRecording: Bool = false
+    @Published var effectiveOverlayStyle: String = "mini"
 
     var statusColor: Color {
         if isModelLoading { return .gray }
@@ -389,7 +394,6 @@ class AudioLevelManager: ObservableObject {
 
 struct AudioWaveformOverlay: View {
     @ObservedObject var levelManager = AudioLevelManager.shared
-    @AppStorage("overlayStyle") private var overlayStyle: String = "mini"
 
     // Dimensions
     private let waveformWidth: CGFloat = 72
@@ -409,7 +413,7 @@ struct AudioWaveformOverlay: View {
     }
 
     var body: some View {
-        if overlayStyle == "large" {
+        if levelManager.effectiveOverlayStyle == "large" {
             LargeOverlayContent()
         } else {
             miniBody
