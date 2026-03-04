@@ -62,6 +62,10 @@ actor AudioRecorder {
     private var fftSetup: FFTSetup?
     private var fftWindow: [Float] = []
     private var fftRollingBuffer: [Float] = []
+    private var fftWindowed: [Float] = []
+    private var fftRealPart: [Float] = []
+    private var fftImagPart: [Float] = []
+    private var fftMagnitudes: [Float] = []
     
     /// Recent audio levels for waveform display
     private var recentLevels: [Float] = []
@@ -76,8 +80,18 @@ actor AudioRecorder {
         fftWindow = [Float](repeating: 0, count: fftSize)
         vDSP_hann_window(&fftWindow, vDSP_Length(fftSize), Int32(vDSP_HANN_NORM))
         fftRollingBuffer = [Float](repeating: 0, count: fftSize)
+        fftWindowed   = [Float](repeating: 0, count: fftSize)
+        fftRealPart   = [Float](repeating: 0, count: fftSize / 2)
+        fftImagPart   = [Float](repeating: 0, count: fftSize / 2)
+        fftMagnitudes = [Float](repeating: 0, count: fftSize / 2)
     }
-    
+
+    deinit {
+        if let setup = fftSetup {
+            vDSP_destroy_fftsetup(setup)
+        }
+    }
+
     // MARK: - Public Methods
     
     /// Sets the callback for real-time audio level updates.
@@ -337,28 +351,29 @@ actor AudioRecorder {
             return [Float](repeating: 0, count: fftBandCount)
         }
 
-        // Apply Hann window
-        var windowed = [Float](repeating: 0, count: fftSize)
-        vDSP_vmul(samples, 1, fftWindow, 1, &windowed, 1, vDSP_Length(fftSize))
+        // Apply Hann window into pre-allocated instance buffer (no heap allocation)
+        vDSP_vmul(samples, 1, fftWindow, 1, &fftWindowed, 1, vDSP_Length(fftSize))
 
-        // Pack real samples into split-complex format
-        var realPart = [Float](repeating: 0, count: fftSize / 2)
-        var imagPart = [Float](repeating: 0, count: fftSize / 2)
         let log2n = vDSP_Length(log2(Float(fftSize)))
         var result = [Float](repeating: 0, count: fftBandCount)
 
-        realPart.withUnsafeMutableBufferPointer { rBuf in
-            imagPart.withUnsafeMutableBufferPointer { iBuf in
+        // Pack real samples into split-complex format using pre-allocated buffers.
+        // withMemoryRebound is safe here: fftWindowed is non-empty (fftSize elements),
+        // and DSPComplex is a struct of two Floats, so capacity = fftSize / 2 is correct.
+        fftRealPart.withUnsafeMutableBufferPointer { rBuf in
+            fftImagPart.withUnsafeMutableBufferPointer { iBuf in
                 var split = DSPSplitComplex(realp: rBuf.baseAddress!, imagp: iBuf.baseAddress!)
-                windowed.withUnsafeBytes { rawBytes in
-                    rawBytes.bindMemory(to: DSPComplex.self).baseAddress.map { cPtr in
+                fftWindowed.withUnsafeMutableBufferPointer { wBuf in
+                    wBuf.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: fftSize / 2) { cPtr in
+                        // vDSP_ctoz with stride 2 on real input: packs even-indexed samples into realp,
+                        // odd-indexed into imagp — the Apple-documented trick for vDSP_fft_zrip
                         vDSP_ctoz(cPtr, 2, &split, 1, vDSP_Length(fftSize / 2))
                         vDSP_fft_zrip(setup, &split, 1, log2n, FFTDirection(FFT_FORWARD))
-                        var magnitudes = [Float](repeating: 0, count: fftSize / 2)
-                        vDSP_zvmags(&split, 1, &magnitudes, 1, vDSP_Length(fftSize / 2))
+                        // Compute power spectrum (magnitudes squared) into pre-allocated buffer
+                        vDSP_zvmags(&split, 1, &fftMagnitudes, 1, vDSP_Length(fftSize / 2))
 
                         let hzPerBin = Float(targetSampleRate) / Float(fftSize)
-                        magnitudes.withUnsafeBufferPointer { magBuf in
+                        fftMagnitudes.withUnsafeBufferPointer { magBuf in
                             for i in 0..<fftBandCount {
                                 let fLow  = fftMinHz * pow(fftMaxHz / fftMinHz, Float(i)     / Float(fftBandCount))
                                 let fHigh = fftMinHz * pow(fftMaxHz / fftMinHz, Float(i + 1) / Float(fftBandCount))
