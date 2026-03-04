@@ -438,3 +438,96 @@ struct PulsingDotsView: View {
         .padding()
         .background(Color.gray)
 }
+
+// MARK: - Large Overlay Content
+
+struct LargeOverlayContent: View {
+    @ObservedObject var levelManager = AudioLevelManager.shared
+
+    private let barCount = 20
+    private let capsuleHeight: CGFloat = 52
+    private let capsuleWidth: CGFloat = 500
+
+    var body: some View {
+        ZStack {
+            // Background
+            Capsule()
+                .fill(Color.black.opacity(0.88))
+                .frame(width: capsuleWidth, height: capsuleHeight)
+
+            HStack(spacing: 0) {
+                // Left: status dot + mode label
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(levelManager.statusColor)
+                        .frame(width: 8, height: 8)
+
+                    if levelManager.isModelLoading {
+                        Text("Loading...")
+                            .foregroundColor(.white.opacity(0.6))
+                            .font(.system(size: 12, weight: .medium))
+                    } else {
+                        Text("Voice")
+                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                }
+                .frame(width: 80, alignment: .leading)
+                .padding(.leading, 16)
+
+                Spacer()
+
+                // Center: waveform or pulsing dots
+                if levelManager.isModelLoading {
+                    EmptyView()
+                } else if levelManager.isTranscribing {
+                    PulsingDotsView()
+                } else {
+                    HStack(spacing: 2) {
+                        ForEach(0..<barCount, id: \.self) { index in
+                            let level = index < levelManager.audioLevels.count
+                                ? levelManager.audioLevels[index % levelManager.audioLevels.count]
+                                : 0.05
+                            RoundedRectangle(cornerRadius: 1.5)
+                                .fill(Color.white)
+                                .frame(width: 2.5, height: barHeight(for: level))
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.08), value: levelManager.audioLevels)
+                }
+
+                Spacer()
+
+                // Right: timer
+                if !levelManager.isModelLoading && !levelManager.isTranscribing {
+                    Text(formatDuration(levelManager.recordingDuration))
+                        .foregroundColor(.white.opacity(0.5))
+                        .font(.system(size: 12, weight: .light, design: .monospaced))
+                        .frame(width: 40, alignment: .trailing)
+                        .padding(.trailing, 16)
+                } else {
+                    Spacer().frame(width: 56)
+                }
+            }
+        }
+        .frame(width: capsuleWidth, height: capsuleHeight)
+    }
+
+    private func barHeight(for level: Float) -> CGFloat {
+        let minH: CGFloat = 4
+        let maxH: CGFloat = 32
+        let amplified = min(1.0, level * 1.8)
+        return minH + CGFloat(amplified) * (maxH - minH)
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        let s = Int(seconds)
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+#Preview("Large Overlay") {
+    LargeOverlayContent()
+        .padding()
+        .background(Color.gray.opacity(0.3))
+}
