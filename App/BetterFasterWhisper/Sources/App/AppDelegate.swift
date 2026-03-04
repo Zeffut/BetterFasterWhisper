@@ -466,6 +466,10 @@ struct LargeOverlayContent: View {
                         Text("Loading...")
                             .foregroundColor(.white.opacity(0.6))
                             .font(.system(size: 12, weight: .medium))
+                    } else if levelManager.isTranscribing {
+                        Text("Processing...")
+                            .foregroundColor(.white.opacity(0.6))
+                            .font(.system(size: 12, weight: .medium))
                     } else {
                         Text("Voice")
                             .foregroundColor(.white.opacity(0.7))
@@ -485,9 +489,7 @@ struct LargeOverlayContent: View {
                 } else {
                     HStack(spacing: 2) {
                         ForEach(0..<barCount, id: \.self) { index in
-                            let level = index < levelManager.audioLevels.count
-                                ? levelManager.audioLevels[index % levelManager.audioLevels.count]
-                                : 0.05
+                            let level = levelManager.audioLevels[index % levelManager.audioLevels.count]
                             RoundedRectangle(cornerRadius: 1.5)
                                 .fill(Color.white)
                                 .frame(width: 2.5, height: barHeight(for: level))
