@@ -726,6 +726,7 @@ class ShortcutCaptureNSView: NSView {
     @objc private func clearShortcut() {
         onShortcutChanged?(nil)
         isCapturing = false
+        window?.makeFirstResponder(nil)
         updateDisplay()
     }
 
@@ -733,14 +734,20 @@ class ShortcutCaptureNSView: NSView {
     override var canBecomeKeyView: Bool { true }
 
     override func keyDown(with event: NSEvent) {
-        guard isCapturing else { return }
+        guard isCapturing else {
+            super.keyDown(with: event)
+            return
+        }
 
         // Escape cancels capture without changing shortcut
         if event.keyCode == 53 {
             isCapturing = false
+            window?.makeFirstResponder(nil)
             updateDisplay()
             return
         }
+
+        guard !ClassicShortcut.modifierKeyCodes.contains(event.keyCode) else { return }
 
         // Build modifier flags from NSEvent
         var flags: UInt64 = 0
@@ -754,6 +761,7 @@ class ShortcutCaptureNSView: NSView {
         let captured = ClassicShortcut(keyCode: event.keyCode, modifierFlags: flags)
         isCapturing = false
         onShortcutChanged?(captured)
+        window?.makeFirstResponder(nil)
         updateDisplay()
     }
 }
