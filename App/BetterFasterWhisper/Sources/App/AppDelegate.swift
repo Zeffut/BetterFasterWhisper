@@ -406,8 +406,6 @@ struct AudioWaveformOverlay: View {
     private let waveformHeight: CGFloat = 28
     private let spinnerWidth: CGFloat = 45  // Wider for 3 dots
     private let spinnerHeight: CGFloat = 24 // Shorter height
-    private let barCount = 12
-
     /// Current width based on state
     private var currentWidth: CGFloat {
         levelManager.isTranscribing ? spinnerWidth : waveformWidth
@@ -443,14 +441,17 @@ struct AudioWaveformOverlay: View {
             } else if levelManager.isTranscribing {
                 PulsingDotsView()
             } else {
+                let bands = Array(levelManager.audioLevels.prefix(6))
+                let mirrored: [Float] = Array(bands.reversed()) + Array(bands)
+
                 HStack(spacing: 2) {
-                    ForEach(0..<barCount, id: \.self) { index in
+                    ForEach(Array(mirrored.enumerated()), id: \.offset) { _, level in
                         RoundedRectangle(cornerRadius: 1)
                             .fill(Color.white)
-                            .frame(width: 2, height: barHeight(for: levelManager.audioLevels[index % levelManager.audioLevels.count]))
+                            .frame(width: 2, height: barHeight(for: level))
                     }
                 }
-                .animation(.easeOut(duration: 0.08), value: levelManager.audioLevels)
+                .animation(.spring(duration: 0.15), value: levelManager.audioLevels)
             }
         }
         .frame(width: waveformWidth, height: waveformHeight)
