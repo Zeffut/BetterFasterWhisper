@@ -220,7 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var overlaySize: NSSize {
         let style = UserDefaults.standard.string(forKey: "overlayStyle") ?? "mini"
         return style == "large"
-            ? NSSize(width: 500, height: 52)
+            ? NSSize(width: 500, height: 64)
             : NSSize(width: 72, height: 28)
     }
 
@@ -463,8 +463,8 @@ struct PulsingDotsView: View {
 struct LargeOverlayContent: View {
     @ObservedObject var levelManager = AudioLevelManager.shared
 
-    private let barCount = 20
-    private let capsuleHeight: CGFloat = 52
+    private let barCount = 28
+    private let capsuleHeight: CGFloat = 64
     private let capsuleWidth: CGFloat = 500
 
     var body: some View {
@@ -509,9 +509,9 @@ struct LargeOverlayContent: View {
                     HStack(spacing: 2) {
                         ForEach(0..<barCount, id: \.self) { index in
                             let level = levelManager.audioLevels[index % levelManager.audioLevels.count]
-                            RoundedRectangle(cornerRadius: 1.5)
+                            RoundedRectangle(cornerRadius: 2)
                                 .fill(Color.white)
-                                .frame(width: 2.5, height: barHeight(for: level))
+                                .frame(width: 3, height: barHeight(for: level))
                         }
                     }
                     .animation(.easeOut(duration: 0.08), value: levelManager.audioLevels)
@@ -536,8 +536,8 @@ struct LargeOverlayContent: View {
 
     private func barHeight(for level: Float) -> CGFloat {
         let minH: CGFloat = 4
-        let maxH: CGFloat = 32
-        let amplified = min(1.0, level * 1.8)
+        let maxH: CGFloat = 50
+        let amplified = min(1.0, level * 3.0)
         return minH + CGFloat(amplified) * (maxH - minH)
     }
 
