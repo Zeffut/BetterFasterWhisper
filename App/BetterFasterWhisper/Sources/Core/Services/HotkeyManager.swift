@@ -49,6 +49,7 @@ struct ClassicShortcut: Codable, Equatable {
     /// Build a ClassicShortcut from a CGEvent keyDown. Returns nil if invalid.
     static func from(event: CGEvent) -> ClassicShortcut? {
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+        guard keyCode != 53 else { return nil }  // Escape cannot be a shortcut
         guard !modifierKeyCodes.contains(keyCode) else { return nil }
         let flags = event.flags.rawValue & modifierMask
         guard flags != 0 else { return nil }
@@ -387,10 +388,12 @@ class HotkeyManager: ObservableObject {
     private func handleKeyDown(_ event: CGEvent) {
         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
 
-        // Escape → cancel classic recording
+        // Escape → cancel classic recording (only when a shortcut is configured)
         if keyCode == 53 {
-            DispatchQueue.main.async { [weak self] in
-                self?.onClassicEscape?()
+            if classicShortcut != nil {
+                DispatchQueue.main.async { [weak self] in
+                    self?.onClassicEscape?()
+                }
             }
             return
         }

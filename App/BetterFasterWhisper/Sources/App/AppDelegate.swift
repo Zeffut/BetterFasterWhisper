@@ -17,9 +17,10 @@ private let logger = Logger(subsystem: "com.betterfasterwhisper", category: "App
 final class AppDelegate: NSObject, NSApplicationDelegate {
     
     // MARK: - Properties
-    
+
     private var miniOverlayWindow: NSWindow?
     static var shared: AppDelegate?
+    private var transientOverlayStyle: String?
     
     // MARK: - Lifecycle
     
@@ -100,15 +101,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
 
-            hotkeyManager.onClassicToggle = {
+            hotkeyManager.onClassicToggle = { [weak self] in
                 Task { @MainActor in
-                    self.handleClassicToggle()
+                    self?.handleClassicToggle()
                 }
             }
 
-            hotkeyManager.onClassicEscape = {
+            hotkeyManager.onClassicEscape = { [weak self] in
                 Task { @MainActor in
-                    self.handleClassicEscape()
+                    self?.handleClassicEscape()
                 }
             }
 
@@ -198,6 +199,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard AudioLevelManager.shared.isClassicRecording else { return }
         AudioLevelManager.shared.isClassicRecording = false
         AppState.shared.cancelRecording()
+        MediaControlManager.shared.resumeMedia()
+        NotificationCenter.default.post(name: .hideOverlay, object: nil)
+        transientOverlayStyle = nil
     }
 
     private func scheduleHideOverlay(delay: TimeInterval) {
@@ -239,8 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Mini Overlay
     
     func showLargeOverlay() {
-        // Force the overlay style to "large" before showing
-        UserDefaults.standard.set("large", forKey: "overlayStyle")
+        transientOverlayStyle = "large"
         showMiniOverlay()
     }
 
@@ -263,11 +266,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     func hideMiniOverlay() {
         miniOverlayWindow?.orderOut(nil)
+        transientOverlayStyle = nil
         AudioLevelManager.shared.reset()
     }
     
     private var overlaySize: NSSize {
-        let style = UserDefaults.standard.string(forKey: "overlayStyle") ?? "mini"
+        let style = transientOverlayStyle ?? UserDefaults.standard.string(forKey: "overlayStyle") ?? "mini"
         return style == "large"
             ? NSSize(width: 520, height: 120)
             : NSSize(width: 72, height: 28)
@@ -597,12 +601,15 @@ struct LargeOverlayContent: View {
                     Button("Stop") {
                         AudioLevelManager.shared.isClassicRecording = false
                         AppState.shared.stopRecording()
+                        MediaControlManager.shared.resumeMedia()
                     }
                     .buttonStyle(OverlayButtonStyle(isDestructive: false))
 
                     Button("Cancel") {
                         AudioLevelManager.shared.isClassicRecording = false
                         AppState.shared.cancelRecording()
+                        MediaControlManager.shared.resumeMedia()
+                        NotificationCenter.default.post(name: .hideOverlay, object: nil)
                     }
                     .buttonStyle(OverlayButtonStyle(isDestructive: true))
                 }
