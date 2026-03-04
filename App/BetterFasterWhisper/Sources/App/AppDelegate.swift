@@ -99,7 +99,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.handleKeyUp()
                 }
             }
-            
+
+            hotkeyManager.onClassicToggle = {
+                Task { @MainActor in
+                    self.handleClassicToggle()
+                }
+            }
+
+            hotkeyManager.onClassicEscape = {
+                Task { @MainActor in
+                    self.handleClassicEscape()
+                }
+            }
+
             hotkeyManager.startListening()
             print("Push-to-talk registered: \(hotkeyManager.triggerKey.displayName)")
         }
@@ -157,6 +169,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    @MainActor
+    private func handleClassicToggle() {
+        guard !AppState.shared.isTranscribing else { return }
+
+        if AppState.shared.isRecording {
+            // Stop and transcribe
+            AudioLevelManager.shared.isClassicRecording = false
+            AppState.shared.stopRecording()
+            MediaControlManager.shared.resumeMedia()
+            scheduleHideOverlay(delay: 10.0)
+        } else {
+            // Start recording
+            showLargeOverlay()
+            guard AppState.shared.isEngineReady else {
+                AudioLevelManager.shared.setLoading(true, message: "Loading model...")
+                return
+            }
+            AudioLevelManager.shared.setLoading(false)
+            AudioLevelManager.shared.isClassicRecording = true
+            MediaControlManager.shared.pauseMedia()
+            AppState.shared.startRecording()
+        }
+    }
+
+    @MainActor
+    private func handleClassicEscape() {
+        guard AudioLevelManager.shared.isClassicRecording else { return }
+        AudioLevelManager.shared.isClassicRecording = false
+        AppState.shared.cancelRecording()
+    }
+
     private func scheduleHideOverlay(delay: TimeInterval) {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             let isRecording = AppState.shared.isRecording
@@ -195,6 +238,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     // MARK: - Mini Overlay
     
+    func showLargeOverlay() {
+        // Force the overlay style to "large" before showing
+        UserDefaults.standard.set("large", forKey: "overlayStyle")
+        showMiniOverlay()
+    }
+
     func showMiniOverlay() {
         // Re-create window if size changed (e.g. style switched in Settings)
         if let existing = miniOverlayWindow,
