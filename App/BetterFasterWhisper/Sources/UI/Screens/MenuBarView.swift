@@ -94,15 +94,6 @@ struct MenuBarView: View {
     }
 }
 
-/// Settings button — kept for backward compatibility if used elsewhere
-struct SettingsButtonView: View {
-    var body: some View {
-        Button("Settings") {
-            AppDelegate.shared?.openSettings()
-        }
-    }
-}
-
 #Preview {
     MenuBarView()
         .environmentObject(AppState.shared)
