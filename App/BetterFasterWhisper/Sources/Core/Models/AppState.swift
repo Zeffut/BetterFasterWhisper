@@ -37,9 +37,6 @@ final class AppState: ObservableObject {
     /// Last transcription result.
     @Published var lastTranscription: TranscriptionResult?
     
-    /// Current selected mode.
-    @Published var currentMode: TranscriptionMode = .voice
-    
     /// Error message to display.
     @Published var errorMessage: String?
     
@@ -323,11 +320,6 @@ final class AppState: ObservableObject {
         if let appDelegate = NSApp.delegate as? AppDelegate {
             appDelegate.hideRecordingPanel()
         }
-    }
-    
-    /// Changes the current transcription mode.
-    func setMode(_ mode: TranscriptionMode) {
-        currentMode = mode
     }
     
     // MARK: - Clipboard

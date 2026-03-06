@@ -51,14 +51,6 @@ struct RecordingView: View {
                 .keyboardShortcut(.return, modifiers: [])
             }
             
-            // Mode indicator
-            HStack {
-                Image(systemName: appState.currentMode.iconName)
-                    .font(.caption)
-                Text(appState.currentMode.displayName)
-                    .font(.caption)
-            }
-            .foregroundStyle(.secondary)
         }
         .padding(24)
         .frame(width: 300)

@@ -48,7 +48,6 @@ struct TranscriptionResult: Codable, Identifiable {
     let processingTime: TimeInterval
     let audioDuration: TimeInterval
     let timestamp: Date
-    let mode: TranscriptionMode
     
     init(
         id: UUID = UUID(),
@@ -57,8 +56,7 @@ struct TranscriptionResult: Codable, Identifiable {
         language: String = "auto",
         processingTime: TimeInterval = 0,
         audioDuration: TimeInterval = 0,
-        timestamp: Date = Date(),
-        mode: TranscriptionMode = .voice
+        timestamp: Date = Date()
     ) {
         self.id = id
         self.text = text
@@ -67,7 +65,6 @@ struct TranscriptionResult: Codable, Identifiable {
         self.processingTime = processingTime
         self.audioDuration = audioDuration
         self.timestamp = timestamp
-        self.mode = mode
     }
     
     /// Real-time factor (processing time / audio duration).

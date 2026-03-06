@@ -18,12 +18,7 @@ struct MenuBarView: View {
             headerSection
             
             Divider()
-            
-            // Mode selector
-            modeSelector
-            
-            Divider()
-            
+
             // Status
             statusSection
             
@@ -59,25 +54,6 @@ struct MenuBarView: View {
             Circle()
                 .fill(appState.isEngineReady ? .green : .orange)
                 .frame(width: 8, height: 8)
-        }
-    }
-    
-    private var modeSelector: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Mode")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 70))], spacing: 8) {
-                ForEach(TranscriptionMode.allCases) { mode in
-                    ModeButton(
-                        mode: mode,
-                        isSelected: appState.currentMode == mode
-                    ) {
-                        appState.setMode(mode)
-                    }
-                }
-            }
         }
     }
     
@@ -155,33 +131,6 @@ struct MenuBarView: View {
         let seconds = Int(duration) % 60
         let tenths = Int((duration * 10).truncatingRemainder(dividingBy: 10))
         return String(format: "%d:%02d.%d", minutes, seconds, tenths)
-    }
-}
-
-/// Button for selecting a transcription mode.
-struct ModeButton: View {
-    let mode: TranscriptionMode
-    let isSelected: Bool
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: mode.iconName)
-                    .font(.title3)
-                Text(mode.displayName)
-                    .font(.caption2)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(isSelected ? Color.accentColor.opacity(0.2) : Color.clear)
-            .cornerRadius(8)
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plain)
     }
 }
 

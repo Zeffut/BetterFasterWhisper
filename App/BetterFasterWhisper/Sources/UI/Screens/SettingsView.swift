@@ -14,15 +14,13 @@ struct SettingsView: View {
     
     private enum Tab: String, CaseIterable {
         case general = "General"
-        case modes = "Modes"
         case models = "Models"
         case shortcuts = "Shortcuts"
         case about = "About"
-        
+
         var icon: String {
             switch self {
             case .general: return "gearshape"
-            case .modes: return "slider.horizontal.3"
             case .models: return "cpu"
             case .shortcuts: return "keyboard"
             case .about: return "info.circle"
@@ -36,12 +34,7 @@ struct SettingsView: View {
                 .tabItem {
                     Label(Tab.general.rawValue, systemImage: Tab.general.icon)
                 }
-            
-            ModesSettingsView()
-                .tabItem {
-                    Label(Tab.modes.rawValue, systemImage: Tab.modes.icon)
-                }
-            
+
             ModelsSettingsView()
                 .tabItem {
                     Label(Tab.models.rawValue, systemImage: Tab.models.icon)
@@ -168,75 +161,6 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-    }
-}
-
-// MARK: - Modes Settings
-
-struct ModesSettingsView: View {
-    @State private var selectedMode: TranscriptionMode = .voice
-    @State private var customPrompt: String = ""
-    
-    var body: some View {
-        HSplitView {
-            // Mode list
-            List(TranscriptionMode.allCases, selection: $selectedMode) { mode in
-                Label(mode.displayName, systemImage: mode.iconName)
-                    .tag(mode)
-            }
-            .frame(minWidth: 150)
-            
-            // Mode details
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Image(systemName: selectedMode.iconName)
-                        .font(.largeTitle)
-                        .foregroundStyle(.blue)
-                    
-                    VStack(alignment: .leading) {
-                        Text(selectedMode.displayName)
-                            .font(.title2)
-                        Text(selectedMode.description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
-                Divider()
-                
-                Text("System Prompt")
-                    .font(.headline)
-                
-                if selectedMode == .custom {
-                    TextEditor(text: $customPrompt)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(minHeight: 150)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(.quaternary, lineWidth: 1)
-                        )
-                    
-                    Text("Enter your custom prompt for LLM processing")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ScrollView {
-                        Text(selectedMode.systemPrompt)
-                            .font(.system(.body, design: .monospaced))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(minHeight: 150)
-                    .padding(8)
-                    .background(.quaternary.opacity(0.3))
-                    .cornerRadius(8)
-                }
-                
-                Spacer()
-            }
-            .padding()
-            .frame(minWidth: 300)
-        }
     }
 }
 

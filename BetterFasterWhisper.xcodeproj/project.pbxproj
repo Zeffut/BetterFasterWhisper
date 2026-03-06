@@ -13,7 +13,6 @@
 		AUD001 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = SRC007 /* AudioRecorder.swift */; };
 
 		CORE001 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = SRC003 /* AppState.swift */; };
-		CORE002 /* TranscriptionMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = SRC004 /* TranscriptionMode.swift */; };
 		CORE003 /* TranscriptionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = SRC005 /* TranscriptionResult.swift */; };
 		RES001_BUILD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = RES001 /* Assets.xcassets */; };
 		SVC001 /* WhisperService.swift in Sources */ = {isa = PBXBuildFile; fileRef = SRC006 /* WhisperService.swift */; };
@@ -35,7 +34,6 @@
 		SRC001 /* BetterFasterWhisperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BetterFasterWhisperApp.swift; sourceTree = "<group>"; };
 		SRC002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		SRC003 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
-		SRC004 /* TranscriptionMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionMode.swift; sourceTree = "<group>"; };
 		SRC005 /* TranscriptionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionResult.swift; sourceTree = "<group>"; };
 		SRC006 /* WhisperService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperService.swift; sourceTree = "<group>"; };
 		SRC007 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
@@ -105,7 +103,6 @@
 			isa = PBXGroup;
 			children = (
 				SRC003 /* AppState.swift */,
-				SRC004 /* TranscriptionMode.swift */,
 				SRC005 /* TranscriptionResult.swift */,
 			);
 			path = Models;
@@ -250,7 +247,6 @@
 				APP001 /* BetterFasterWhisperApp.swift in Sources */,
 				APP002 /* AppDelegate.swift in Sources */,
 				CORE001 /* AppState.swift in Sources */,
-				CORE002 /* TranscriptionMode.swift in Sources */,
 				CORE003 /* TranscriptionResult.swift in Sources */,
 				SVC001 /* WhisperService.swift in Sources */,
 				SVC002 /* ModelManager.swift in Sources */,
