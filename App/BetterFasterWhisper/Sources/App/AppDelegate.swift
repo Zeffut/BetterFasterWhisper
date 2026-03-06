@@ -440,6 +440,7 @@ class AudioLevelManager: ObservableObject {
     
     func reset() {
         audioLevels = Array(repeating: 0, count: 20)
+        isActivelyRecording = false
     }
     
     func setLoading(_ loading: Bool, message: String = "") {
@@ -466,15 +467,6 @@ struct AudioWaveformOverlay: View {
     private let waveformHeight: CGFloat = 28
     private let spinnerWidth: CGFloat = 45  // Wider for 3 dots
     private let spinnerHeight: CGFloat = 24 // Shorter height
-    /// Current width based on state
-    private var currentWidth: CGFloat {
-        levelManager.isTranscribing ? spinnerWidth : waveformWidth
-    }
-
-    /// Current height based on state
-    private var currentHeight: CGFloat {
-        levelManager.isTranscribing ? spinnerHeight : waveformHeight
-    }
 
     var body: some View {
         if levelManager.effectiveOverlayStyle == "large" {
@@ -696,6 +688,7 @@ struct LargeOverlayContent: View {
                 if levelManager.isClassicRecording {
                     Button("Stop") {
                         AudioLevelManager.shared.isClassicRecording = false
+                        AudioLevelManager.shared.isActivelyRecording = false
                         AppState.shared.stopRecording()
                         MediaControlManager.shared.resumeMedia()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
