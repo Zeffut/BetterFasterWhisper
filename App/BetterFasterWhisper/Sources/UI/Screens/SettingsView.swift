@@ -12,7 +12,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     
-    private enum Tab: String, CaseIterable {
+    private enum Tab: String {
         case general = "General"
         case models = "Models"
         case shortcuts = "Shortcuts"

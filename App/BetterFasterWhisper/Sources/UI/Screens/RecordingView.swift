@@ -65,7 +65,7 @@ struct RecordingView: View {
                     Circle()
                         .fill(.red)
                         .frame(width: 10, height: 10)
-                        .opacity(pulsingOpacity)
+                        .opacity(1.0)
                     Text("Recording")
                         .font(.headline)
                 }
@@ -90,8 +90,6 @@ struct RecordingView: View {
             }
         }
     }
-    
-    @State private var pulsingOpacity: Double = 1.0
     
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
