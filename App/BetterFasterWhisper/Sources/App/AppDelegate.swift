@@ -200,6 +200,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AudioLevelManager.shared.setLoading(false)
         logger.info("Starting recording...")
         AppState.shared.startRecording()
+        AudioLevelManager.shared.isActivelyRecording = true
     }
     
     @MainActor
@@ -207,6 +208,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger.info("handleKeyUp - isRecording: \(AppState.shared.isRecording)")
         if AppState.shared.isRecording {
             logger.info("Stopping recording and starting transcription...")
+            AudioLevelManager.shared.isActivelyRecording = false
             AppState.shared.stopRecording()
             
             // Resume media playback
@@ -228,6 +230,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if AppState.shared.isRecording {
             // Stop and transcribe
             AudioLevelManager.shared.isClassicRecording = false
+            AudioLevelManager.shared.isActivelyRecording = false
             AppState.shared.stopRecording()
             MediaControlManager.shared.resumeMedia()
             scheduleHideOverlay(delay: 10.0)
@@ -242,6 +245,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             AudioLevelManager.shared.setLoading(false)
             MediaControlManager.shared.pauseMedia()
             AppState.shared.startRecording()
+            AudioLevelManager.shared.isActivelyRecording = true
         }
     }
 
@@ -249,6 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleClassicEscape() {
         guard AudioLevelManager.shared.isClassicRecording else { return }
         AudioLevelManager.shared.isClassicRecording = false
+        AudioLevelManager.shared.isActivelyRecording = false
         AppState.shared.cancelRecording()
         MediaControlManager.shared.resumeMedia()
         NotificationCenter.default.post(name: .hideOverlay, object: nil)
@@ -419,6 +424,7 @@ class AudioLevelManager: ObservableObject {
     @Published var recordingDuration: TimeInterval = 0
     @Published var isClassicRecording: Bool = false
     @Published var effectiveOverlayStyle: String = "mini"
+    @Published var isActivelyRecording: Bool = false
 
     var statusColor: Color {
         if isModelLoading { return .gray }
@@ -481,23 +487,14 @@ struct AudioWaveformOverlay: View {
     private var miniBody: some View {
         ZStack {
             Capsule()
-                .fill(Color.black.opacity(0.9))
-                .frame(width: currentWidth, height: currentHeight)
+                .fill(Color.black.opacity(0.85))
+                .frame(width: 72, height: 28)
 
-            if levelManager.isModelLoading {
-                HStack(spacing: 4) {
-                    PulsingDotsView()
-                    Text("Loading...")
-                        .foregroundColor(.white)
-                        .font(.system(size: 10, weight: .medium))
-                        .lineLimit(1)
-                }
-            } else if levelManager.isTranscribing {
+            if levelManager.isModelLoading || levelManager.isTranscribing {
                 PulsingDotsView()
-            } else {
+            } else if levelManager.isActivelyRecording {
                 let interpolated = interpolateBands(levelManager.audioLevels, to: 12)
                 let mirrored: [Float] = Array(interpolated.reversed()) + Array(interpolated)
-
                 HStack(spacing: 1) {
                     ForEach(Array(mirrored.enumerated()), id: \.offset) { _, level in
                         RoundedRectangle(cornerRadius: 1)
@@ -506,10 +503,15 @@ struct AudioWaveformOverlay: View {
                     }
                 }
                 .animation(.spring(duration: 0.15), value: levelManager.audioLevels)
+            } else {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.4))
             }
         }
-        .frame(width: waveformWidth, height: waveformHeight)
+        .frame(width: 72, height: 28)
         .animation(.easeInOut(duration: 0.2), value: levelManager.isTranscribing)
+        .animation(.easeInOut(duration: 0.2), value: levelManager.isActivelyRecording)
     }
 
     private func barHeight(for level: Float) -> CGFloat {
