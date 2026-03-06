@@ -2,139 +2,99 @@
 //  MenuBarView.swift
 //  BetterFasterWhisper
 //
-//  Created by BetterFasterWhisper Contributors
-//  Licensed under MIT License
-//
 
 import SwiftUI
 
-/// Menu bar dropdown content.
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
-    
+    @ObservedObject private var whisperService = WhisperService.shared
+
     var body: some View {
-        VStack(spacing: 12) {
-            // Header
-            headerSection
-            
+        VStack(alignment: .leading, spacing: 0) {
+            // Status row
+            HStack(spacing: 10) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                Text(statusText)
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            // Hotkey row
+            HStack(spacing: 6) {
+                Image(systemName: "keyboard")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(hotkeyLabel)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+
             Divider()
 
-            // Status
-            statusSection
-            
-            Divider()
-            
-            // Actions
-            actionButtons
-        }
-        .padding()
-        .frame(width: 280)
-    }
-    
-    // MARK: - Sections
-    
-    private var headerSection: some View {
-        HStack {
-            Image(systemName: "waveform.circle.fill")
-                .font(.title2)
-                .foregroundStyle(.blue)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("BetterFasterWhisper")
-                    .font(.headline)
-                
-                Text(appState.isEngineReady ? "Ready" : "Initializing...")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            
-            Spacer()
-            
-            // Status indicator
-            Circle()
-                .fill(appState.isEngineReady ? .green : .orange)
-                .frame(width: 8, height: 8)
-        }
-    }
-    
-    private var statusSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if appState.isRecording {
-                HStack {
-                    Circle()
-                        .fill(.red)
-                        .frame(width: 8, height: 8)
-                    Text("Recording...")
-                        .font(.caption)
-                    Spacer()
-                    Text(formatDuration(appState.recordingDuration))
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-            } else if appState.isTranscribing {
-                HStack {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                    Text("Transcribing...")
-                        .font(.caption)
-                }
-            } else if let result = appState.lastTranscription {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Last transcription")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(result.text.prefix(100) + (result.text.count > 100 ? "..." : ""))
-                        .font(.caption)
-                        .lineLimit(2)
-                }
-            } else {
-                Text("Press ⌥ Space to start recording")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-    
-    private var actionButtons: some View {
-        VStack(spacing: 8) {
+            // Settings
             Button {
-                appState.toggleRecording()
+                AppDelegate.shared?.openSettings()
             } label: {
-                Label(
-                    appState.isRecording ? "Stop Recording" : "Start Recording",
-                    systemImage: appState.isRecording ? "stop.circle.fill" : "mic.circle.fill"
-                )
-                .frame(maxWidth: .infinity)
+                Text("Settings")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderedProminent)
-            .tint(appState.isRecording ? .red : .blue)
-            .disabled(!appState.isEngineReady)
-            
-            HStack {
-                SettingsButtonView()
-                    .buttonStyle(.bordered)
-                
-                Spacer()
-                
-                Button("Quit") {
-                    NSApp.terminate(nil)
-                }
-                .buttonStyle(.bordered)
+            .buttonStyle(.plain)
+
+            Divider()
+
+            // Quit
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Text("Quit")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
+        .frame(width: 220)
     }
-    
-    // MARK: - Helpers
-    
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        let tenths = Int((duration * 10).truncatingRemainder(dividingBy: 10))
-        return String(format: "%d:%02d.%d", minutes, seconds, tenths)
+
+    private var statusColor: Color {
+        if appState.isRecording { return .red }
+        if !whisperService.isInitialized { return .orange }
+        return .green
+    }
+
+    private var statusText: String {
+        if appState.isRecording { return "Recording..." }
+        if appState.isTranscribing { return "Transcribing..." }
+        if !whisperService.isInitialized { return "Loading model..." }
+        return "Ready"
+    }
+
+    private var hotkeyLabel: String {
+        let raw = UserDefaults.standard.string(forKey: "triggerKey") ?? "rightOption"
+        switch raw {
+        case "leftOption":   return "Left ⌥ Option"
+        case "rightOption":  return "Right ⌥ Option"
+        case "leftControl":  return "Left ⌃ Control"
+        case "rightControl": return "Right ⌃ Control"
+        case "leftCommand":  return "Left ⌘ Command"
+        case "rightCommand": return "Right ⌘ Command"
+        case "fn":           return "Fn"
+        default:             return raw
+        }
     }
 }
 
-/// Settings button that works on macOS 13+
+/// Settings button — kept for backward compatibility if used elsewhere
 struct SettingsButtonView: View {
     var body: some View {
         Button("Settings") {
