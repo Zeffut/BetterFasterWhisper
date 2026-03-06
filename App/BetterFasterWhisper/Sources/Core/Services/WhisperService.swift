@@ -80,30 +80,32 @@ final class WhisperService: ObservableObject {
     /// - Parameter modelVariant: The model variant to load (e.g., "openai_whisper-large-v3_turbo")
     func initialize(modelVariant: String = "openai_whisper-large-v3_turbo") async {
         guard !isInitialized else { return }
-        
+
         loadingMessage = "Initializing WhisperKit..."
         loadingProgress = 0
-        
+
         do {
             logger.info("Initializing WhisperKit with model: \(modelVariant)")
-            
-            // Initialize WhisperKit with the specified model
-            // WhisperKit handles model downloading automatically
-            whisperKit = try await WhisperKit(
-                model: modelVariant,
-                verbose: false,  // Disabled for performance
-                logLevel: .error,  // Only log errors
-                prewarm: true,
-                load: true,
-                useBackgroundDownloadSession: false
-            )
-            
+
+            // Run heavy WhisperKit init (model load + CoreML compile) off main actor
+            let kit = try await Task.detached(priority: .userInitiated) {
+                try await WhisperKit(
+                    model: modelVariant,
+                    verbose: false,
+                    logLevel: .error,
+                    prewarm: true,
+                    load: true,
+                    useBackgroundDownloadSession: false
+                )
+            }.value
+
+            whisperKit = kit
             isInitialized = true
             currentModelName = modelVariant
             loadingProgress = 1.0
             loadingMessage = "Ready"
             logger.info("WhisperKit initialized successfully")
-            
+
         } catch {
             loadingMessage = "Failed to initialize: \(error.localizedDescription)"
             logger.error("Failed to initialize WhisperKit: \(error.localizedDescription)")

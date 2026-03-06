@@ -26,10 +26,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
-        
+
         // Hide dock icon (menu bar only app)
         NSApp.setActivationPolicy(.accessory)
-        
+
+        // Close any restored settings window after SwiftUI has set up the MenuBarExtra
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            for window in NSApp.windows {
+                // Keep MenuBarExtra windows (panels/popovers) and our overlay
+                if window is NSPanel { continue }
+                if window.className.contains("StatusBar") || window.className.contains("MenuBar") { continue }
+                if window.level == .statusBar { continue }
+                if window.isVisible {
+                    window.close()
+                }
+            }
+        }
+
         logger.info("BetterFasterWhisper starting...")
         
         // Request accessibility permission FIRST (this adds app to the list)
@@ -80,7 +93,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
     }
-    
+
+    // MARK: - Settings / Dock
+
+    private var settingsWindowObserver: NSObjectProtocol?
+
+    func openSettings() {
+        // Open the settings window first
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+
+        // Show in dock — must happen after sendAction so the window exists
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate(ignoringOtherApps: true)
+
+            guard let window = NSApp.windows.first(where: {
+                $0.isVisible && $0 !== self?.miniOverlayWindow
+            }) else { return }
+
+            window.collectionBehavior.insert(.moveToActiveSpace)
+            window.makeKeyAndOrderFront(nil)
+
+            // Watch for close to hide dock icon
+            if let old = self?.settingsWindowObserver {
+                NotificationCenter.default.removeObserver(old)
+            }
+            self?.settingsWindowObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                NSApp.setActivationPolicy(.accessory)
+                if let obs = self?.settingsWindowObserver {
+                    NotificationCenter.default.removeObserver(obs)
+                    self?.settingsWindowObserver = nil
+                }
+            }
+        }
+    }
+
     // MARK: - Push-to-Talk Setup
     
     private func setupPushToTalk() {
@@ -328,16 +379,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Ensure window has correct size
         window.setContentSize(NSSize(width: windowWidth, height: windowHeight))
         
-        // Calculate the menu bar / notch height
+        // Calculate the menu bar / notch height.
+        // On notch screens safeAreaInsets.top > 0 (typically ~38pt).
+        // On external or non-notch screens safeAreaInsets.top == 0 — use the
+        // standard macOS menu bar height (24pt) so the overlay sits right below it.
         let notchSafeHeight: CGFloat
         if #available(macOS 12.0, *) {
             let safeAreaTop = screen.safeAreaInsets.top
-            notchSafeHeight = max(safeAreaTop, 38)
+            notchSafeHeight = safeAreaTop > 0 ? safeAreaTop : 24
         } else {
-            notchSafeHeight = 38
+            notchSafeHeight = 24
         }
-        
-        // Center horizontally on screen, position below notch
+
+        // Center horizontally on screen, position below notch/menu bar
         let x = screenFrame.origin.x + (screenFrame.width - windowWidth) / 2
         let y = screenFrame.maxY - notchSafeHeight - windowHeight - 10
         
@@ -441,14 +495,14 @@ struct AudioWaveformOverlay: View {
             } else if levelManager.isTranscribing {
                 PulsingDotsView()
             } else {
-                let bands = Array(levelManager.audioLevels.prefix(6))
-                let mirrored: [Float] = Array(bands.reversed()) + Array(bands)
+                let interpolated = interpolateBands(levelManager.audioLevels, to: 12)
+                let mirrored: [Float] = Array(interpolated.reversed()) + Array(interpolated)
 
                 HStack(spacing: 1) {
                     ForEach(Array(mirrored.enumerated()), id: \.offset) { _, level in
                         RoundedRectangle(cornerRadius: 1)
                             .fill(Color.white)
-                            .frame(width: 5, height: barHeight(for: level))
+                            .frame(width: 2, height: barHeight(for: level))
                     }
                 }
                 .animation(.spring(duration: 0.15), value: levelManager.audioLevels)
@@ -462,6 +516,21 @@ struct AudioWaveformOverlay: View {
         let minHeight: CGFloat = 3
         let maxHeight: CGFloat = 18
         return minHeight + CGFloat(min(1.0, level)) * (maxHeight - minHeight)
+    }
+
+    private func interpolateBands(_ values: [Float], to count: Int) -> [Float] {
+        guard values.count >= 2, count >= 2 else { return values }
+        var result = [Float](repeating: 0, count: count)
+        let inMax = Float(values.count - 1)
+        let outMax = Float(count - 1)
+        for i in 0..<count {
+            let pos = Float(i) / outMax * inMax
+            let lo = Int(pos)
+            let hi = min(lo + 1, values.count - 1)
+            let t = pos - Float(lo)
+            result[i] = values[lo] * (1 - t) + values[hi] * t
+        }
+        return result
     }
 }
 
@@ -565,17 +634,35 @@ struct LargeOverlayContent: View {
             PulsingDotsView()
         } else {
             let bands = levelManager.audioLevels
-            let mirrored: [Float] = Array(bands.reversed()) + Array(bands)
+            let interpolated = interpolateBands(bands, to: 87)
+            let mirrored: [Float] = Array(interpolated.reversed()) + Array(interpolated)
 
-            HStack(spacing: 2) {
+            HStack(spacing: 1) {
                 ForEach(Array(mirrored.enumerated()), id: \.offset) { _, level in
-                    RoundedRectangle(cornerRadius: 3)
+                    RoundedRectangle(cornerRadius: 1)
                         .fill(Color.white)
-                        .frame(width: 11, height: barHeight(for: level))
+                        .frame(width: 2, height: barHeight(for: level))
                 }
             }
             .animation(.spring(duration: 0.15), value: levelManager.audioLevels)
         }
+    }
+
+    // MARK: Helpers (waveform)
+
+    private func interpolateBands(_ values: [Float], to count: Int) -> [Float] {
+        guard values.count >= 2, count >= 2 else { return values }
+        var result = [Float](repeating: 0, count: count)
+        let inMax = Float(values.count - 1)
+        let outMax = Float(count - 1)
+        for i in 0..<count {
+            let pos = Float(i) / outMax * inMax
+            let lo = Int(pos)
+            let hi = min(lo + 1, values.count - 1)
+            let t = pos - Float(lo)
+            result[i] = values[lo] * (1 - t) + values[hi] * t
+        }
+        return result
     }
 
     // MARK: Control Bar
