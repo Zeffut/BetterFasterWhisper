@@ -8,6 +8,7 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
     @ObservedObject private var whisperService = WhisperService.shared
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -39,7 +40,10 @@ struct MenuBarView: View {
 
             // Settings
             Button {
-                AppDelegate.shared?.openSettings()
+                dismiss()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    AppDelegate.shared?.openSettings()
+                }
             } label: {
                 Text("Settings")
                     .frame(maxWidth: .infinity, alignment: .leading)

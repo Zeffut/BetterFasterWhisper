@@ -99,22 +99,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindowObserver: NSObjectProtocol?
 
     func openSettings() {
-        // Open the settings window first
+        NSApp.setActivationPolicy(.regular)
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
 
-        // Show in dock — must happen after sendAction so the window exists
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            NSApp.setActivationPolicy(.regular)
-            NSApp.activate(ignoringOtherApps: true)
-
+        // Give SwiftUI time to create/show the window, then activate and bring to front
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             guard let window = NSApp.windows.first(where: {
                 $0.isVisible && $0 !== self?.miniOverlayWindow
             }) else { return }
 
             window.collectionBehavior.insert(.moveToActiveSpace)
+            NSRunningApplication.current.activate(options: [.activateIgnoringOtherApps, .activateAllWindows])
             window.makeKeyAndOrderFront(nil)
 
-            // Watch for close to hide dock icon
             if let old = self?.settingsWindowObserver {
                 NotificationCenter.default.removeObserver(old)
             }
